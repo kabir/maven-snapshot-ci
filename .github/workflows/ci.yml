@@ -32,7 +32,8 @@ jobs:
       run: |
         env
         echo pwd
-        pwd
         echo env.GITHUB_EVENT_PATH
-        echo ${{ env.GITHUB_EVENT_PATH }}
-        ls ${{ env.GITHUB_EVENT_PATH }}
+        echo $GITHUB_EVENT_PATH
+        ls $GITHUB_EVENT_PATH
+        cat $GITHUB_EVENT_PATH
+        echo "done!"
