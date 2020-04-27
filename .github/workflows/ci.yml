@@ -23,16 +23,21 @@ jobs:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
 
-    # Runs a single command using the runners shell
-    #- name: Run a one-line script
-    #  run: echo "${{ env.GITHUB_EVENT_PATH }}"
-
     # Runs a set of commands using the runners shell
-    - name: Run multi-line script
+    - name: Env
+      run: env
+      
+    - name: Output GITHUB_EVENT_PATH
       run: |
-        env
-        echo pwd
-        pwd
-        echo env.GITHUB_EVENT_PATH
-        echo ${{ env.GITHUB_EVENT_PATH }}
-        ls ${{ env.GITHUB_EVENT_PATH }}
+        cat $GITHUB_EVENT_PATH
+    
+    - name: use github event
+      run: |
+        echo ${{ github.event.issue.number }}
+        echo "${{ github.event.issue.body }}"
+
+#    - name: Construct job
+#      uses: gr2m/get-json-paths-action@v1.x
+#      with:
+#        json: ${{ steps.action_with_json_output.outputs.data }}
+#        issue_body:
