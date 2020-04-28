@@ -20,6 +20,7 @@ import org.yaml.snakeyaml.Yaml;
  * @author <a href="mailto:kabir.khan@jboss.com">Kabir Khan</a>
  */
 public class GitHubActionGenerator {
+    private static final String PROJECT_VERSIONS_DIRECTORY = ".project_versions";
     private final Map<String, Object> workflow = new LinkedHashMap<>();
     private final Path workflowFile;
     private final Path yamlConfig;
@@ -106,6 +107,15 @@ public class GitHubActionGenerator {
                 new CacheMavenRepoBuilder()
                         .build());
         steps.add(
+                new GrabProjectVersionBuilder()
+                        .setFileName(PROJECT_VERSIONS_DIRECTORY, component.getName())
+                        .build());
+        steps.add(
+                new UploadArtifactBuilder()
+                        .setName(getVersionArtifactName(component.getName()))
+                        .setPath(PROJECT_VERSIONS_DIRECTORY + "/" + component.getName())
+                        .build());
+        steps.add(
                 new SetupJavaBuilder()
                         .setVersion("11")
                         .build());
@@ -117,7 +127,15 @@ public class GitHubActionGenerator {
         return job;
     }
 
-    private String createComponentBuildId(String componentName) {
-        return "build-" + componentName;
+    private String createComponentBuildId(String name) {
+        return "build-" + name;
+    }
+
+    private String getVersionArtifactName(String name) {
+        return "version-" + name;
+    }
+
+    private String createVersionVariable(String name) {
+        return "VERSION_" + name.replace("-", "_");
     }
 }
