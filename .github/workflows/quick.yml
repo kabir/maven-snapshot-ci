@@ -1,0 +1,18 @@
+# A temporary workflow to try things out quickly
+
+name: CI
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Check branch
+      run: |
+        git remote show origin
