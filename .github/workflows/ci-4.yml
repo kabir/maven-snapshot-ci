@@ -1,0 +1,55 @@
+name: Another test
+'on':
+  push: {branches: branch-4}
+env: {MAVEN_OPTS: -Xms756M -Xmx1g, VALUE1: value1}
+jobs:
+  build-xnio:
+    name: xnio
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with: {repository: xnio/xnio, ref: '3.8'}
+    - uses: actions/cache@v1
+      with: {path: ~/.m2/repository, key: '${{ runner.os }}-maven-${{ hashFiles(''**/pom.xml'')
+          }}', restore-keys: '${{ runner.os }}-maven-'}
+    - uses: actions/setup-java@v1
+      with: {java-version: '11'}
+    - name: Grab project version
+      run: |
+        mvn -B help:evaluate -Dexpression=project.version -pl .
+        TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
+        echo "version: ${TMP}"
+        mkdir -p .project_versions
+        echo "${TMP}" > .project_versions/xnio
+    - uses: actions/upload-artifact@v1
+      with: {name: version-xnio, path: .project_versions/xnio}
+    - {name: Build with Maven, run: mvn -B install -DskipTests}
+  build-jboss-remoting:
+    name: jboss-remoting
+    runs-on: ubuntu-latest
+    needs: [build-xnio]
+    steps:
+    - uses: actions/checkout@v2
+      with: {repository: jboss-remoting/jboss-remoting, ref: '5.0'}
+    - uses: actions/cache@v1
+      with: {path: ~/.m2/repository, key: '${{ runner.os }}-maven-${{ hashFiles(''**/pom.xml'')
+          }}', restore-keys: '${{ runner.os }}-maven-'}
+    - uses: actions/setup-java@v1
+      with: {java-version: '11'}
+    - uses: actions/download-artifact@v1
+      with: {name: version-xnio, path: .project_versions}
+    - name: Read $VERSION_xnio
+      run: |
+        TMP=`cat .project_versions/xnio`
+        echo "::set-env name=VERSION_xnio::${TMP}"
+        echo "Stored ${TMP} into VERSION_xnio"
+    - name: Grab project version
+      run: |
+        mvn -B help:evaluate -Dexpression=project.version -pl .
+        TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
+        echo "version: ${TMP}"
+        mkdir -p .project_versions
+        echo "${TMP}" > .project_versions/jboss-remoting
+    - uses: actions/upload-artifact@v1
+      with: {name: version-jboss-remoting, path: .project_versions/jboss-remoting}
+    - {name: Build with Maven, run: 'mvn -B install -DskipTests -Dxnio.version="${VERSION_xnio}"'}

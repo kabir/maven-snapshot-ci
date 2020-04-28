@@ -1,0 +1,20 @@
+name: Another test
+env:
+  MAVEN_OPTS: -Xms756M -Xmx1g
+  VALUE1: value1
+components:
+  - name: xnio
+    org: xnio
+    branch: 3.8
+    mavenOpts: -DskipTests
+  - name: jboss-remoting
+    org: jboss-remoting
+    branch: 5.0
+    mavenOpts: -DskipTests
+    dependencies:
+      - name: xnio
+        property: xnio.version
+
+
+
+
