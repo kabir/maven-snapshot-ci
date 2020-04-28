@@ -20,7 +20,7 @@ import org.yaml.snakeyaml.Yaml;
  * @author <a href="mailto:kabir.khan@jboss.com">Kabir Khan</a>
  */
 public class GitHubActionGenerator {
-    private static final String PROJECT_VERSIONS_DIRECTORY = ".project_versions";
+    static final String PROJECT_VERSIONS_DIRECTORY = ".project_versions";
     private final Map<String, Object> workflow = new LinkedHashMap<>();
     private final Path workflowFile;
     private final Path yamlConfig;
@@ -75,7 +75,7 @@ public class GitHubActionGenerator {
 
         for (Component component : config.getComponents()) {
             Map<String, Object> job = setupComponentBuildJob(component);
-            String id = createComponentBuildId(component.getName());
+            String id = getComponentBuildId(component.getName());
             componentJobs.put(id, job);
         }
         workflow.put("jobs", componentJobs);
@@ -92,7 +92,7 @@ public class GitHubActionGenerator {
         if (component.getDependencies().size() > 0) {
             List<String> needs = new ArrayList<>();
             for (Dependency dep : component.getDependencies()) {
-                needs.add(createComponentBuildId(dep.getName()));
+                needs.add(getComponentBuildId(dep.getName()));
             }
             job.put("needs", needs);
         }
@@ -107,6 +107,24 @@ public class GitHubActionGenerator {
                 new CacheMavenRepoBuilder()
                         .build());
         steps.add(
+                new SetupJavaBuilder()
+                        .setVersion("11")
+                        .build());
+
+        for (Dependency dependency : component.getDependencies()) {
+            steps.add(
+                    new DownloadArtifactBuilder()
+                            .setPath(PROJECT_VERSIONS_DIRECTORY)
+                            .setName(getVersionArtifactName(dependency.getName()))
+                            .build());
+            steps.add(
+                    new ReadFileIntoEnvVarBuilder()
+                            .setPath(PROJECT_VERSIONS_DIRECTORY + "/" + dependency.getName())
+                            .setEnvVarName(getVersionEnvVarName(dependency.getName()))
+                            .build());
+        }
+
+        steps.add(
                 new GrabProjectVersionBuilder()
                         .setFileName(PROJECT_VERSIONS_DIRECTORY, component.getName())
                         .build());
@@ -116,18 +134,26 @@ public class GitHubActionGenerator {
                         .setPath(PROJECT_VERSIONS_DIRECTORY + "/" + component.getName())
                         .build());
         steps.add(
-                new SetupJavaBuilder()
-                        .setVersion("11")
-                        .build());
-        steps.add(
                 new MavenBuildBuilder()
-                        .setOptions(component.getMavenOpts())
+                        .setOptions(getMavenOptions(component))
                         .build());
         job.put("steps", steps);
         return job;
     }
 
-    private String createComponentBuildId(String name) {
+    private String getMavenOptions(Component component) {
+        StringBuilder sb = new StringBuilder();
+        if (component.getMavenOpts() != null) {
+            sb.append(component.getMavenOpts());
+        }
+        for (Dependency dep : component.getDependencies()) {
+            sb.append(" ");
+            sb.append("-D" + dep.getProperty() + "=\"${" + getVersionEnvVarName(dep.getName()) + "}\"");
+        }
+        return sb.toString();
+    }
+
+    private String getComponentBuildId(String name) {
         return "build-" + name;
     }
 
@@ -135,7 +161,7 @@ public class GitHubActionGenerator {
         return "version-" + name;
     }
 
-    private String createVersionVariable(String name) {
+    private String getVersionEnvVarName(String name) {
         return "VERSION_" + name.replace("-", "_");
     }
 }

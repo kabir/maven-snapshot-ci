@@ -34,9 +34,7 @@ public class GrabProjectVersionBuilder {
             bash.append(String.format("echo \"::set-env name=%s::${TMP}\"\n", envVarName));
         }
         if (fileName != null) {
-            bash.append("if [[ ! -f " + directory + " ]] ; then\n");
-            bash.append("  mkdir " + directory + "\n");
-            bash.append("fi\n");
+            bash.append(BashUtils.createDirectoryIfNotExist(directory));
             bash.append("echo \"${TMP}\" > " + directory + "/" + fileName + "\n");
         }
 
