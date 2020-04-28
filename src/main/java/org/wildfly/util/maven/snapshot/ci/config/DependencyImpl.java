@@ -24,4 +24,10 @@ public class DependencyImpl implements Dependency {
     public void setProperty(String property) {
         this.property = property;
     }
+
+    public void validate() {
+        if (name == null || property == null) {
+            throw new IllegalStateException("Null 'name' or 'property' in a dependency");
+        }
+    }
 }

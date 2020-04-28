@@ -42,6 +42,7 @@ public class ConfigParser {
             throw new RuntimeException(e);
         }
 
+        config.validate();
         return config;
     }
 }

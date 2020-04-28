@@ -4,6 +4,7 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -20,6 +21,11 @@ public class ConfigParserTest {
 
         Assert.assertNotNull(config);
 
+        Map<String, Object> env = config.getEnv();
+        Assert.assertEquals(2, env.size());
+        Assert.assertEquals("-Xms756M -Xmx1g", env.get("MAVEN_OPTS"));
+        Assert.assertEquals("value1", env.get("VALUE1"));
+
         List<Component> components = config.getComponents();
         Assert.assertNotNull(components);
         Assert.assertEquals(2, components.size());
@@ -27,14 +33,16 @@ public class ConfigParserTest {
         Component wfCommon = components.get(0);
         Assert.assertEquals("wildfly-common", wfCommon.getName());
         Assert.assertEquals("wildfly", wfCommon.getOrg());
-        Assert.assertEquals("test", wfCommon.getBranch());
+        Assert.assertEquals("master", wfCommon.getBranch());
+        Assert.assertNull(wfCommon.getMavenOpts());
         Assert.assertNotNull(wfCommon.getDependencies());
         Assert.assertEquals(0, wfCommon.getDependencies().size());
 
         Component wfElytron = components.get(1);
         Assert.assertEquals("wildfly-elytron", wfElytron.getName());
-        Assert.assertEquals("wildfly-security", wfElytron.getOrg());
+        Assert.assertEquals("kabir", wfElytron.getOrg());
         Assert.assertEquals("feature", wfElytron.getBranch());
+        Assert.assertEquals("-DskipTests -Dhello=true", wfElytron.getMavenOpts());
         Assert.assertNotNull(wfElytron.getDependencies());
         Assert.assertEquals(1, wfElytron.getDependencies().size());
         Assert.assertEquals("wildfly-common", wfElytron.getDependencies().get(0).getName());

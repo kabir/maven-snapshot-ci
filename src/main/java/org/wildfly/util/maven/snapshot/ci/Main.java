@@ -5,7 +5,6 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.stream.Collectors;
 
 /**
  * @author <a href="mailto:kabir.khan@jboss.com">Kabir Khan</a>
@@ -19,8 +18,6 @@ public class Main {
 
     public static void main(String[] args) throws Exception {
         System.out.println("Starting cross-component job generation");
-        System.out.println(Paths.get("").toAbsolutePath());
-        System.out.println("Current files: " + Files.list(Paths.get("")).collect(Collectors.toList()));
         Path yamlConfig = null;
         String branchName = null;
         String issueNumber = null;

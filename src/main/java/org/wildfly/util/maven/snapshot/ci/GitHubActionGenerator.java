@@ -1,15 +1,26 @@
 package org.wildfly.util.maven.snapshot.ci;
 
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.wildfly.util.maven.snapshot.ci.config.Component;
+import org.wildfly.util.maven.snapshot.ci.config.Config;
+import org.wildfly.util.maven.snapshot.ci.config.ConfigParser;
+import org.wildfly.util.maven.snapshot.ci.config.Dependency;
+import org.yaml.snakeyaml.Yaml;
 
 /**
  * @author <a href="mailto:kabir.khan@jboss.com">Kabir Khan</a>
  */
 public class GitHubActionGenerator {
+    private final Map<String, Object> workflow = new LinkedHashMap<>();
     private final Path workflowFile;
     private final Path yamlConfig;
     private final String branchName;
@@ -28,33 +39,85 @@ public class GitHubActionGenerator {
     }
 
     void generate() throws Exception {
-        //Config config = ConfigParser.create(yamlConfig).parse();
-
+        if (workflow.size() > 0) {
+            throw new IllegalStateException("generate() called twice?");
+        }
+        Config config = ConfigParser.create(yamlConfig).parse();
         System.out.println("Wil create workflow file at " + workflowFile.toAbsolutePath());
 
-        // Copy the temporary workflow to see that we can do another workflow
-//        URL url = this.getClass().getResource("temp.yml");
-//        Path from = workflowFile.getParent().getParent().getParent().resolve("org/wildfly/util/maven/snapshot/ci");
-//        System.out.println("Copying " + from + " to " + workflowFile);
-//        System.out.println(from + " " + Files.exists(from));
-//        System.out.println(workflowFile + " " + Files.exists(workflowFile));
-//        Files.createFile(workflowFile);
-//        System.out.println(workflowFile + " " + Files.exists(workflowFile));
-//        Files.copy(Paths.get(url.toURI()), workflowFile);
+        setupWorkFlowHeaderSection(config);
+        setupJobs(config);
 
-        String tmpYaml =
-                "# This will be generated\n" +
-                "name: CI\n" +
-                "on:\n" +
-                "  push:\n" +
-                "#    branches: [ master ]\n" +
-                "jobs:\n" +
-                "  build:\n" +
-                "    runs-on: ubuntu-latest\n" +
-                "    steps:\n" +
-                "      - uses: actions/checkout@v2\n" +
-                "      - name: Run a one-line script\n" +
-                "        run: echo Hello, world!";
-        Files.write(workflowFile, tmpYaml.getBytes(StandardCharsets.UTF_8));
+        Yaml yaml = new Yaml();
+        String output = yaml.dump(workflow);
+        System.out.println("-----------------");
+        System.out.println(output);
+        System.out.println("-----------------");
+        Files.write(workflowFile, output.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private void setupWorkFlowHeaderSection(Config config) {
+        workflow.put("name", config.getName());
+        workflow.put("on", Collections.singletonMap("push", Collections.singletonMap("branches", branchName)));
+
+        if (config.getEnv().size() > 0) {
+            Map<String, Object> env = new HashMap<>();
+            for (String key : config.getEnv().keySet()) {
+                env.put(key, config.getEnv().get(key));
+            }
+            workflow.put("env", env);
+        }
+    }
+
+    private void setupJobs(Config config) {
+        Map<String, Object> componentJobs = new LinkedHashMap<>();
+
+        for (Component component : config.getComponents()) {
+            Map<String, Object> job = setupComponentBuildJob(component);
+            String id = createComponentBuildId(component.getName());
+            componentJobs.put(id, job);
+        }
+        workflow.put("jobs", componentJobs);
+
+        // TODO the main jobs
+
+    }
+
+    private Map<String, Object> setupComponentBuildJob(Component component) {
+        Map<String, Object> job = new LinkedHashMap<>();
+        job.put("name", component.getName());
+        job.put("runs-on", "ubuntu-latest");
+
+        if (component.getDependencies().size() > 0) {
+            List<String> needs = new ArrayList<>();
+            for (Dependency dep : component.getDependencies()) {
+                needs.add(createComponentBuildId(dep.getName()));
+            }
+            job.put("needs", needs);
+        }
+
+        List<Object> steps = new ArrayList<>();
+        steps.add(
+                new CheckoutBuilder()
+                        .setRepo(component.getOrg(), component.getName())
+                        .setBranch(component.getBranch())
+                        .build());
+        steps.add(
+                new CacheMavenRepoBuilder()
+                        .build());
+        steps.add(
+                new SetupJavaBuilder()
+                        .setVersion("11")
+                        .build());
+        steps.add(
+                new MavenBuildBuilder()
+                        .setOptions(component.getMavenOpts())
+                        .build());
+        job.put("steps", steps);
+        return job;
+    }
+
+    private String createComponentBuildId(String componentName) {
+        return "build-" + componentName;
     }
 }

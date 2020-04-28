@@ -10,6 +10,7 @@ public class ComponentImpl implements Component {
     private String name;
     private String org;
     private String branch;
+    private String mavenOpts;
     private List<Dependency> dependencies = Collections.emptyList();
 
     public ComponentImpl() {
@@ -42,6 +43,14 @@ public class ComponentImpl implements Component {
         this.branch = branch;
     }
 
+    public String getMavenOpts() {
+        return mavenOpts;
+    }
+
+    public void setMavenOpts(String mavenOpts) {
+        this.mavenOpts = mavenOpts;
+    }
+
     @Override
     public List<Dependency> getDependencies() {
         return dependencies;
@@ -49,5 +58,16 @@ public class ComponentImpl implements Component {
 
     public void setDependencies(List<Dependency> dependencies) {
         this.dependencies = Collections.unmodifiableList(dependencies);
+    }
+
+    @Override
+    public void validate() {
+        if (name == null || org == null || branch == null) {
+            throw new IllegalStateException("Null 'name', 'org' or 'branch' in a component");
+        }
+        for (Dependency dependency : dependencies) {
+            dependency.validate();
+        }
+
     }
 }

@@ -1,10 +1,15 @@
+name: Kabir's test
+env:
+  MAVEN_OPTS: -Xms756M -Xmx1g
+  VALUE1: value1
 components:
   - name: wildfly-common
     org: wildfly
-    branch: test
+    branch: master
   - name: wildfly-elytron
-    org: wildfly-security
+    org: kabir
     branch: feature
+    mavenOpts: -DskipTests -Dhello=true
     dependencies:
       - name: wildfly-common
         property: version.wildfly.common
