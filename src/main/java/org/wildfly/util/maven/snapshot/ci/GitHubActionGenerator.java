@@ -10,10 +10,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.wildfly.util.maven.snapshot.ci.config.Component;
-import org.wildfly.util.maven.snapshot.ci.config.Config;
-import org.wildfly.util.maven.snapshot.ci.config.ConfigParser;
-import org.wildfly.util.maven.snapshot.ci.config.Dependency;
+import org.wildfly.util.maven.snapshot.ci.config.issue.Component;
+import org.wildfly.util.maven.snapshot.ci.config.issue.IssueConfig;
+import org.wildfly.util.maven.snapshot.ci.config.issue.IssueConfigParser;
+import org.wildfly.util.maven.snapshot.ci.config.issue.Dependency;
 import org.yaml.snakeyaml.Yaml;
 
 /**
@@ -43,11 +43,11 @@ public class GitHubActionGenerator {
         if (workflow.size() > 0) {
             throw new IllegalStateException("generate() called twice?");
         }
-        Config config = ConfigParser.create(yamlConfig).parse();
+        IssueConfig issueConfig = IssueConfigParser.create(yamlConfig).parse();
         System.out.println("Wil create workflow file at " + workflowFile.toAbsolutePath());
 
-        setupWorkFlowHeaderSection(config);
-        setupJobs(config);
+        setupWorkFlowHeaderSection(issueConfig);
+        setupJobs(issueConfig);
 
         Yaml yaml = new Yaml();
         String output = yaml.dump(workflow);
@@ -57,23 +57,23 @@ public class GitHubActionGenerator {
         Files.write(workflowFile, output.getBytes(StandardCharsets.UTF_8));
     }
 
-    private void setupWorkFlowHeaderSection(Config config) {
-        workflow.put("name", config.getName());
+    private void setupWorkFlowHeaderSection(IssueConfig issueConfig) {
+        workflow.put("name", issueConfig.getName());
         workflow.put("on", Collections.singletonMap("push", Collections.singletonMap("branches", branchName)));
 
-        if (config.getEnv().size() > 0) {
+        if (issueConfig.getEnv().size() > 0) {
             Map<String, Object> env = new HashMap<>();
-            for (String key : config.getEnv().keySet()) {
-                env.put(key, config.getEnv().get(key));
+            for (String key : issueConfig.getEnv().keySet()) {
+                env.put(key, issueConfig.getEnv().get(key));
             }
             workflow.put("env", env);
         }
     }
 
-    private void setupJobs(Config config) {
+    private void setupJobs(IssueConfig issueConfig) {
         Map<String, Object> componentJobs = new LinkedHashMap<>();
 
-        for (Component component : config.getComponents()) {
+        for (Component component : issueConfig.getComponents()) {
             Map<String, Object> job = setupComponentBuildJob(component);
             String id = getComponentBuildId(component.getName());
             componentJobs.put(id, job);

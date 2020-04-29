@@ -1,4 +1,4 @@
-package org.wildfly.util.maven.snapshot.ci.config;
+package org.wildfly.util.maven.snapshot.ci.config.issue;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -9,7 +9,7 @@ import java.util.Set;
 /**
  * @author <a href="mailto:kabir.khan@jboss.com">Kabir Khan</a>
  */
-public class ConfigImpl implements Config {
+public class IssueConfigImpl implements IssueConfig {
     String name;
     Map<String, Object> env = Collections.singletonMap("MAVEN_OPTS", "-Xms756M -Xmx1g");
     List<Component> components = Collections.emptyList();

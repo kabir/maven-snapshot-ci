@@ -8,25 +8,28 @@ import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.wildfly.util.maven.snapshot.ci.config.issue.Component;
+import org.wildfly.util.maven.snapshot.ci.config.issue.IssueConfig;
+import org.wildfly.util.maven.snapshot.ci.config.issue.IssueConfigParser;
 
 /**
  * @author <a href="mailto:kabir.khan@jboss.com">Kabir Khan</a>
  */
-public class ConfigParserTest {
+public class IssueConfigParserTest {
     @Test
     public void testParseYaml() throws Exception {
-        URL url = this.getClass().getResource("test.yml");
+        URL url = this.getClass().getResource("issue-test.yml");
         Path path = Paths.get(url.toURI());
-        Config config = ConfigParser.create(path).parse();
+        IssueConfig issueConfig = IssueConfigParser.create(path).parse();
 
-        Assert.assertNotNull(config);
+        Assert.assertNotNull(issueConfig);
 
-        Map<String, Object> env = config.getEnv();
+        Map<String, Object> env = issueConfig.getEnv();
         Assert.assertEquals(2, env.size());
         Assert.assertEquals("-Xms756M -Xmx1g", env.get("MAVEN_OPTS"));
         Assert.assertEquals("value1", env.get("VALUE1"));
 
-        List<Component> components = config.getComponents();
+        List<Component> components = issueConfig.getComponents();
         Assert.assertNotNull(components);
         Assert.assertEquals(2, components.size());
 
