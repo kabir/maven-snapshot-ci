@@ -1,4 +1,4 @@
-name: Kabir's test
+name: Kabir's testing
 'on':
   push: {branches: quick-branch}
 env: {MAVEN_OPTS: -Xms756M -Xmx1g, VALUE1: value1}
