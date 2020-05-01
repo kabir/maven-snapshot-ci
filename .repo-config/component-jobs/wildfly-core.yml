@@ -1,7 +1,9 @@
 env:
   # Unfortunately GitHub Actions does not allow env vars to reference others so we need to duplicate the content
-  MAVEN_SMOKE_TEST_PARAMS: -Dmaven.test.failure.ignore=true -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae
-  MAVEN_TEST_PARAMS: -Dmaven.test.failure.ignore=true -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae -DallTests
+  # MAVEN_SMOKE_TEST_PARAMS: -Dmaven.test.failure.ignore=true -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae
+  MAVEN_SMOKE_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae
+  # MAVEN_TEST_PARAMS: -Dmaven.test.failure.ignore=true -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae -DallTests
+  MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae -DallTests
 # exported jobs are the jobs that the components depending on this will depend upon
 exported-jobs: [build]
 jobs:
