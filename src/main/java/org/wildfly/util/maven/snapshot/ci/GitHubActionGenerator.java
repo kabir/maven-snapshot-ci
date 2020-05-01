@@ -133,7 +133,8 @@ public class GitHubActionGenerator {
         Component component = context.getComponent();
 
         Map<String, Object> job = new LinkedHashMap<>();
-        job.put("name", context.getJobName());
+        String jobName = context.getJobName();
+        job.put("name", jobName);
         job.put("runs-on", "ubuntu-latest");
 
         Map<String, String> env = context.createEnv();
@@ -180,9 +181,21 @@ public class GitHubActionGenerator {
         steps.add(
                 new UploadArtifactBuilder()
                         .setName(getVersionArtifactName(component.getName()))
-                        .setPath(PROJECT_VERSIONS_DIRECTORY + "/" + component.getName())
                         .build());
         steps.addAll(context.createBuildSteps());
+
+        //Upload a
+        steps.add(
+                new ZipLogsAndReportsBuilder()
+                    .setName(jobName)
+                    .setIfCondition(IfCondition.ALWAYS)
+                    .build());
+        steps.add(
+                new UploadArtifactBuilder()
+                        .setName(jobName + ".zip")
+                        .setIfCondition(IfCondition.ALWAYS)
+                        .build()
+        );
 
         job.put("steps", steps);
 
@@ -208,7 +221,7 @@ public class GitHubActionGenerator {
             this.component = component;
         }
 
-        public abstract Object getJobName();
+        public abstract String getJobName();
 
         public Component getComponent() {
             return component;
@@ -258,7 +271,7 @@ public class GitHubActionGenerator {
         }
 
         @Override
-        public Object getJobName() {
+        public String getJobName() {
             return component.getName();
         }
 
@@ -290,7 +303,7 @@ public class GitHubActionGenerator {
         }
 
         @Override
-        public Object getJobName() {
+        public String getJobName() {
             return jobConfig.getName();
         }
 

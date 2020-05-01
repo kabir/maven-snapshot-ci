@@ -6,7 +6,7 @@ package org.wildfly.util.maven.snapshot.ci;
 public class UploadArtifactBuilder extends AbstractArtifactBuilder<UploadArtifactBuilder> {
 
     UploadArtifactBuilder() {
-        super("actions/upload-artifact@v1");
+        super("actions/upload-artifact@v2");
     }
     @Override
     UploadArtifactBuilder getThis() {
