@@ -6,13 +6,25 @@ import java.util.List;
  * @author <a href="mailto:kabir.khan@jboss.com">Kabir Khan</a>
  */
 public class ComponentJobsConfig {
-    private final List<Job> jobs;
+    private final String componentName;
+    private final List<String> exportedJobs;
+    private final List<JobConfig> jobs;
 
-    public ComponentJobsConfig(List<Job> jobs) {
+    public ComponentJobsConfig(String componentName, List<String> exportedJobs, List<JobConfig> jobs) {
+        this.componentName = componentName;
+        this.exportedJobs = exportedJobs;
         this.jobs = jobs;
     }
 
-    public List<Job> getJobs() {
+    public String getComponentName() {
+        return componentName;
+    }
+
+    public List<String> getExportedJobs() {
+        return exportedJobs;
+    }
+
+    public List<JobConfig> getJobs() {
         return jobs;
     }
 }

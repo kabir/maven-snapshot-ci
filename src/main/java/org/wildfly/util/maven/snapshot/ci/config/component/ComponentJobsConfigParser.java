@@ -18,20 +18,20 @@ import org.yaml.snakeyaml.Yaml;
 /**
  * @author <a href="mailto:kabir.khan@jboss.com">Kabir Khan</a>
  */
-public class ComponentJobsParser {
+public class ComponentJobsConfigParser {
     private final Path yamlFile;
-    private final String fileName;
+    private final String componentName;
     private final Set<String> jobKeys = new HashSet<>();
 
-    private ComponentJobsParser(Path yamlFile, String fileName) {
+    private ComponentJobsConfigParser(Path yamlFile, String componentName) {
         this.yamlFile = yamlFile;
-        this.fileName = fileName;
+        this.componentName = componentName;
     }
 
-    public static ComponentJobsParser create(Path yamlFile) {
+    public static ComponentJobsConfigParser create(Path yamlFile) {
         String fileName = yamlFile.getFileName().toString();
         fileName = fileName.substring(0, fileName.indexOf("."));
-        return new ComponentJobsParser(yamlFile, fileName);
+        return new ComponentJobsConfigParser(yamlFile, fileName);
     }
 
     public ComponentJobsConfig parse() throws Exception {
@@ -46,6 +46,7 @@ public class ComponentJobsParser {
 
         Object envInput = input.remove("env");
         Object jobsInput = input.remove("jobs");
+        Object exportedJobsInput = input.remove("exported-jobs");
         if (input.size() > 0) {
             throw new IllegalStateException("Unknown entries: " + input.keySet());
         }
@@ -57,27 +58,47 @@ public class ComponentJobsParser {
         if (envInput != null) {
             mainEnv = parseEnv(envInput);
         }
-        List<Job> jobs = parseJobs(mainEnv, jobsInput);
+        Map<String, JobConfig> jobs = parseJobs(mainEnv, jobsInput);
         if (jobs.size() == 0) {
             throw new IllegalStateException("'jobs' entry is empty");
         }
+        List<String> exportedJobs = new ArrayList<>();
+        if (exportedJobsInput != null) {
+            if (exportedJobsInput instanceof List == false) {
+                throw new IllegalStateException("'exported-jobs' entry is not a list");
+            }
+            List<Object> exportedList = (List) exportedJobsInput;
+            for (Object o : exportedList) {
+                if (o instanceof String == false) {
+                    throw new IllegalStateException("'exported-jobs' entry is not a String: " + o);
+                }
+                String exportedJob = (String) o;
+                if (jobs.get(exportedJob) == null) {
+                    throw new IllegalStateException("No job called '" + exportedJob +
+                            "' referenced by 'exported-jobs' entry: " + exportedJob);
+                }
+                exportedJobs.add(createJobName(exportedJob));
+            }
+        }
 
-        return new ComponentJobsConfig(jobs);
+
+        return new ComponentJobsConfig(componentName, exportedJobs, new ArrayList<>(jobs.values()));
     }
 
-    private List<Job> parseJobs(Map<String, String> mainEnv, Object input) {
+    private Map<String, JobConfig> parseJobs(Map<String, String> mainEnv, Object input) {
         if (input instanceof Map == false) {
             throw new IllegalStateException("Not an instance of Map");
         }
-        List<Job> jobs = new ArrayList<>();
+        Map<String, JobConfig> jobs = new LinkedHashMap<>();
         Map<String, Object> map = (Map)input;
         for (String key : map.keySet()) {
-            jobs.add(parseJob(mainEnv, key, map.get(key)));
+            JobConfig job = parseJob(mainEnv, key, map.get(key));
+            jobs.put(key, job);
         }
         return jobs;
     }
 
-    private Job parseJob(Map<String, String> mainEnv, String jobKey, Object input) {
+    private JobConfig parseJob(Map<String, String> mainEnv, String jobKey, Object input) {
         if (input instanceof Map == false) {
             throw new IllegalStateException("Not an instance of Map");
         }
@@ -86,7 +107,7 @@ public class ComponentJobsParser {
         String name = createJobName(jobKey);
         Map<String, String> jobEnv = new HashMap<>();
         List<String> needs = new ArrayList<>();
-        List<JobRunElement> runElements = null;
+        List<JobRunElementConfig> runElements = null;
         for (String key : map.keySet()) {
             switch (key) {
                 case "env": {
@@ -113,7 +134,7 @@ public class ComponentJobsParser {
             throw new IllegalStateException("Null 'run'");
         }
 
-        return new Job(name, jobEnv, needs, runElements);
+        return new JobConfig(name, jobEnv, needs, runElements);
     }
 
     private Map<String, String> mergeEnv(Map<String, String> mainEnv, Map<String, String> jobEnv) {
@@ -143,20 +164,20 @@ public class ComponentJobsParser {
         return needs;
     }
 
-    private List<JobRunElement> parseJobRunElements(Object input) {
+    private List<JobRunElementConfig> parseJobRunElements(Object input) {
         if (input instanceof List == false) {
             throw new IllegalStateException("Not an instance of List");
         }
         List<Object> list = (List)input;
-        List<JobRunElement> jobRunElements = new ArrayList<>();
+        List<JobRunElementConfig> jobRunElements = new ArrayList<>();
         for (Object o : list) {
-            JobRunElement jobRunElement = parseJobRunElement(o);
+            JobRunElementConfig jobRunElement = parseJobRunElement(o);
             jobRunElements.add(jobRunElement);
         }
         return jobRunElements;
     }
 
-    private JobRunElement parseJobRunElement(Object input) {
+    private JobRunElementConfig parseJobRunElement(Object input) {
         if (input instanceof Map == false) {
             throw new IllegalStateException("Not an instance of Map");
         }
@@ -165,14 +186,14 @@ public class ComponentJobsParser {
             throw new IllegalStateException("Only one entry allowed per 'run' element");
         }
         String key = map.keySet().iterator().next();
-        JobRunElement.Type type = null;
+        JobRunElementConfig.Type type = null;
         switch (key) {
             case "mvn": {
-                type = JobRunElement.Type.MVN;
+                type = JobRunElementConfig.Type.MVN;
                 break;
             }
             case "shell":
-                type = JobRunElement.Type.SHELL;
+                type = JobRunElementConfig.Type.SHELL;
                 break;
             default:
                 throw new IllegalStateException("Unknown type for 'run' element");
@@ -184,16 +205,16 @@ public class ComponentJobsParser {
         }
         String command = (String) value;
         if (command.trim().startsWith("mvn ")) {
-            if (type == JobRunElement.Type.SHELL) {
+            if (type == JobRunElementConfig.Type.SHELL) {
                 throw new IllegalStateException("If you want to run mvn commands, that should happen in a 'mvn' run entry");
-            } else if (type == JobRunElement.Type.MVN) {
+            } else if (type == JobRunElementConfig.Type.MVN) {
                 throw new IllegalStateException("In a 'mvn' run entry, don't include the mvn command. e.g.\n" +
                         "\t\t - mvn: install\n" +
                         "gets translated to:\n" +
                         "\t\t $mvn install");
             }
         }
-        return new JobRunElement(type, command);
+        return new JobRunElementConfig(type, command);
     }
 
     private Map<String, String> parseEnv(Object input) {
@@ -213,6 +234,6 @@ public class ComponentJobsParser {
     }
 
     private String createJobName(String jobKey) {
-        return fileName + "-" + jobKey;
+        return componentName + "-" + jobKey;
     }
 }

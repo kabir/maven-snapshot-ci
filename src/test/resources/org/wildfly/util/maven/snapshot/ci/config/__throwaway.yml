@@ -14,3 +14,17 @@ components:
     dependencies:
       - name: xnio
         property: xnio.version
+  - name: wildfly-core
+    org: wildfly
+    branch: master
+    dependencies:
+      - name: xnio
+        property: version.org.jboss.xnio
+      - name: jboss-remoting
+        property: version.org.jboss.remoting
+  - name: wildfly
+    org: wildfly
+    branch: master
+    dependencies:
+      - name: wildfly-core
+        property: version.org.wildfly.core

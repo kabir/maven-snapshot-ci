@@ -5,33 +5,36 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Test;
 import org.wildfly.util.maven.snapshot.ci.config.component.ComponentJobsConfig;
-import org.wildfly.util.maven.snapshot.ci.config.component.ComponentJobsParser;
-import org.wildfly.util.maven.snapshot.ci.config.component.Job;
-import org.wildfly.util.maven.snapshot.ci.config.component.JobRunElement;
+import org.wildfly.util.maven.snapshot.ci.config.component.ComponentJobsConfigParser;
+import org.wildfly.util.maven.snapshot.ci.config.component.JobConfig;
+import org.wildfly.util.maven.snapshot.ci.config.component.JobRunElementConfig;
 
 /**
  * @author <a href="mailto:kabir.khan@jboss.com">Kabir Khan</a>
  */
-public class ComponentJobsParserTest {
+public class ComponentJobsConfigParserTest {
     @Test
     public void testParseYaml() throws Exception {
         URL url = this.getClass().getResource("component-job-test.yml");
         Path path = Paths.get(url.toURI());
-        ComponentJobsConfig config = ComponentJobsParser.create(path).parse();
+        ComponentJobsConfig config = ComponentJobsConfigParser.create(path).parse();
 
         Assert.assertNotNull(config);
 
-        List<Job> jobs = config.getJobs();
+        List<String> exportedJobs = config.getExportedJobs();
+        Assert.assertEquals(1, exportedJobs.size());
+        Assert.assertEquals("component-job-test-build", exportedJobs.get(0));
+
+        List<JobConfig> jobs = config.getJobs();
         Assert.assertEquals(2, jobs.size());
 
-        Job build = jobs.get(0);
+        JobConfig build = jobs.get(0);
         Assert.assertEquals("component-job-test-build", build.getName());
         Assert.assertEquals(0, build.getNeeds().size());
         Map<String, String> buildEnv = build.getJobEnv();
@@ -41,15 +44,15 @@ public class ComponentJobsParserTest {
         Assert.assertEquals("22-22", buildEnv.get("P2"));
         Assert.assertEquals("333", buildEnv.get("P3"));
         Assert.assertEquals("4444", buildEnv.get("P4"));
-        List<JobRunElement> buildRun = build.getRunElements();
+        List<JobRunElementConfig> buildRun = build.getRunElements();
         Assert.assertEquals(2, buildRun.size());
-        Assert.assertEquals(JobRunElement.Type.MVN, buildRun.get(0).getType());
+        Assert.assertEquals(JobRunElementConfig.Type.MVN, buildRun.get(0).getType());
         Assert.assertEquals("install {MAVEN_BUILD_PARAMS}", buildRun.get(0).getCommand());
-        Assert.assertEquals(JobRunElement.Type.SHELL, buildRun.get(1).getType());
+        Assert.assertEquals(JobRunElementConfig.Type.SHELL, buildRun.get(1).getType());
         Assert.assertEquals("echo hi", buildRun.get(1).getCommand());
 
 
-        Job ts = jobs.get(1);
+        JobConfig ts = jobs.get(1);
         Assert.assertEquals("component-job-test-ts", ts.getName());
         Assert.assertEquals(1, ts.getNeeds().size());
         Assert.assertEquals("component-job-test-build", ts.getNeeds().get(0));
@@ -59,9 +62,9 @@ public class ComponentJobsParserTest {
         Assert.assertEquals(Arrays.asList("P1", "P2"), tsEnvKeys);
         Assert.assertEquals("1", tsEnv.get("P1"));
         Assert.assertEquals("22", tsEnv.get("P2"));
-        List<JobRunElement> tsRun = ts.getRunElements();
+        List<JobRunElementConfig> tsRun = ts.getRunElements();
         Assert.assertEquals(1, tsRun.size());
-        Assert.assertEquals(JobRunElement.Type.MVN, tsRun.get(0).getType());
+        Assert.assertEquals(JobRunElementConfig.Type.MVN, tsRun.get(0).getType());
         Assert.assertEquals("package -pl tests ${MAVEN_SMOKE_TEST_PARAMS}", tsRun.get(0).getCommand());
 
     }

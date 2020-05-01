@@ -54,7 +54,7 @@ public class IssueConfigImpl implements IssueConfig {
             for (Dependency dependency : component.getDependencies()) {
                 if (!names.contains(dependency.getName())) {
                     throw new IllegalStateException("Component '" + component.getName() + "' depends on a component '"
-                            + dependency.getName() + "' which does not exist yet.");
+                            + dependency.getName() + "' which does not exist yet. Define the components in order.");
                 }
             }
             component.validate();

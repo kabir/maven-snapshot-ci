@@ -1,6 +1,7 @@
 env:
   P1: 1
   P2: 22
+exported-jobs: [build]
 jobs:
   build:
     env:
