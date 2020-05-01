@@ -47,5 +47,5 @@ jobs:
         echo "${{ github.event.issue.body }}" > config.yml
         java -jar target/ci-tool.jar --workflow-dir=.github/workflows --yaml=config.yml --issue=${{ github.event.issue.number }} --branch=$BRANCH
         git add -A
-        git commit -m "Add file"
+        git commit -m "Add workflow testing file for issue ${{ github.event.issue.number }}"
         git push --force origin "${BRANCH}"
