@@ -10,7 +10,6 @@ components:
   - name: jboss-remoting
     org: jboss-remoting
     branch: 5.0
-    mavenOpts: -DskipTests
     dependencies:
       - name: xnio
         property: xnio.version

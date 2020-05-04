@@ -1,5 +1,7 @@
 package org.wildfly.util.maven.snapshot.ci;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -8,7 +10,6 @@ import java.util.Map;
  */
 public class GrabProjectVersionBuilder {
     private String envVarName;
-    private String directory;
     private String fileName;
 
 
@@ -17,8 +18,7 @@ public class GrabProjectVersionBuilder {
         return this;
     }
 
-    public GrabProjectVersionBuilder setFileName(String directory, String fileName) {
-        this.directory = directory;
+    public GrabProjectVersionBuilder setFileName(String fileName) {
         this.fileName = fileName;
         return this;
     }
@@ -34,8 +34,12 @@ public class GrabProjectVersionBuilder {
             bash.append(String.format("echo \"::set-env name=%s::${TMP}\"\n", envVarName));
         }
         if (fileName != null) {
-            bash.append(BashUtils.createDirectoryIfNotExist(directory));
-            bash.append("echo \"${TMP}\" > " + directory + "/" + fileName + "\n");
+            Path path = Paths.get(fileName);
+            if (path.getParent() != null) {
+                bash.append(BashUtils.createDirectoryIfNotExist(path.getParent().toString()));
+            }
+
+            bash.append("echo \"${TMP}\" > " + fileName + "\n");
         }
 
         Map<String, Object> cmd = new LinkedHashMap<>();

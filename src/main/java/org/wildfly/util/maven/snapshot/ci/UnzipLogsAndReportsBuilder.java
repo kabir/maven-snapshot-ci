@@ -6,30 +6,35 @@ import java.util.Map;
 /**
  * @author <a href="mailto:kabir.khan@jboss.com">Kabir Khan</a>
  */
-public class ZipLogsAndReportsBuilder {
+public class UnzipLogsAndReportsBuilder {
     String fileName;
+    String directory;
     private IfCondition ifCondition;
 
-    public ZipLogsAndReportsBuilder setFile(String fileName) {
-        this.fileName = fileName;
+    public UnzipLogsAndReportsBuilder setName(String jobName) {
+        this.fileName = jobName;
         return this;
     }
 
-    public ZipLogsAndReportsBuilder setIfCondition(IfCondition ifCondition) {
+    public UnzipLogsAndReportsBuilder setIfCondition(IfCondition ifCondition) {
         this.ifCondition = ifCondition;
+        return this;
+    }
+
+    public UnzipLogsAndReportsBuilder setDirectory(String directory) {
+        this.directory = directory;
         return this;
     }
 
     public Map<String, Object> build() {
         Map<String, Object> zip = new LinkedHashMap<>();
-        zip.put("name", "Zip logs and surefire reports");
+        zip.put("name", "Unzip logs and surefire reports");
         if (ifCondition != null) {
             zip.put("if", ifCondition.getValue());
         }
-        String marker = "marker-" + fileName;
         zip.put("run",
-                    "echo \"" + marker + "\" >> " + marker +"\n" +
-                        "zip -R " + fileName + " '" + marker + "' '*.log' 'surefire-reports/*.txt' 'surefire-reports/*.xml'");
+                "mkdir -p " + directory + "\n" +
+                        "unzip " + fileName + " -d " + directory + "\n");
 
         return zip;
     }

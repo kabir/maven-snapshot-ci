@@ -4,8 +4,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -174,25 +176,41 @@ public class GitHubActionGenerator {
                             .build());
         }
 
+        final String versionFileName = PROJECT_VERSIONS_DIRECTORY + "/" + component.getName();
         steps.add(
                 new GrabProjectVersionBuilder()
-                        .setFileName(PROJECT_VERSIONS_DIRECTORY, component.getName())
+                        .setFileName(versionFileName)
                         .build());
         steps.add(
                 new UploadArtifactBuilder()
                         .setName(getVersionArtifactName(component.getName()))
+                        .setPath(versionFileName)
                         .build());
         steps.addAll(context.createBuildSteps());
 
-        //Upload a
+        //Upload a zip of the logs
+        // First zip it to conveniently match the patterns
+        final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss");
+        final String timestamp = simpleDateFormat.format(new Date());
+        final String logZipName = jobName + "-logs" + timestamp + ".zip";
         steps.add(
                 new ZipLogsAndReportsBuilder()
-                    .setName(jobName)
+                    .setFile(logZipName)
                     .setIfCondition(IfCondition.ALWAYS)
                     .build());
+        // Then unzip it to somewhere else
+        final String unzipDir = ".project-build-logs";
+        steps.add(
+                new UnzipLogsAndReportsBuilder()
+                        .setName(logZipName)
+                        .setDirectory(unzipDir)
+                        .setIfCondition(IfCondition.ALWAYS)
+                        .build());
         steps.add(
                 new UploadArtifactBuilder()
-                        .setName(jobName + ".zip")
+                        .setName(jobName + "-logs-" + timestamp)
+                        .setPath(unzipDir)
+                        .setTimestamp(timestamp)
                         .setIfCondition(IfCondition.ALWAYS)
                         .build()
         );
