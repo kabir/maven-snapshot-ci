@@ -1,16 +1,14 @@
 env:
-  # Unfortunately GitHub Actions does not allow env vars to reference others so we need to duplicate
-  # MAVEN_SMOKE_TEST_PARAMS: -Dmaven.test.failure.ignore=true -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae
-  MAVEN_SMOKE_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae
-  # MAVEN_TEST_PARAMS: -Dmaven.test.failure.ignore=true -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae -DallTests
+  # Unfortunately GitHub Actions does not allow env vars to reference others so we need to duplicate the content
   MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae -DallTests
-# exported jobs are the jobs that the components depending on this will depend upon
+# exported jobs are the jobs that the components builds in the issue yaml depending on this component will depend upon
 exported-jobs: [build]
 jobs:
   # Build the server skipping tests for speed since other jobs depend on this. The maven repo is cached
   build:
     env:
       MAVEN_BUILD_EXTRA_PARAMS: -DlegacyBuild -DlegacyRelease -DskipTests
+      MAVEN_TEST_BUILD_DEPS: install -pl build,dist,ee-dist,ee-build -DskipTests
     run:
       # Do not quote the usage of the env vars, or the quotes get wrapped in single quutes,
       # which means they don't take effect (e.g. -DskipTests from MAVEN_BUILD_EXTRA_PARAMS will not work!)
@@ -28,22 +26,114 @@ jobs:
   ts-smoke:
     needs: [build]
     run:
-      - mvn: package ${MAVEN_SMOKE_TEST_PARAMS}
+      - mvn: package ${MAVEN_TEST_PARAMS}
 
+  ts-basic:
+    needs: [build]
+    run:
+      # We need to rebuild the dists again, hence the initial install
+      - mvn: ${MAVEN_TEST_BUILD_DEPS}
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.basic -pl testsuite/integration/basic/,testsuite/integration/ws/
+
+  ts-clustering:
+    needs: [build]
+    run:
+      # We need to rebuild the dists again, hence the initial install
+      - mvn: ${MAVEN_TEST_BUILD_DEPS}
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.clustering -rf testsuite/integration/clustering/
 
   ts-domain:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
-      - mvn: install -pl build,dist,ee-dist -DskipTests
-      - mvn: package ${MAVEN_TEST_PARAMS} -pl testsuite/domain
+      - mvn: ${MAVEN_TEST_BUILD_DEPS}
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.domain -pl testsuite/domain
 
   ts-elytron:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
-      - mvn: install -pl build,dist,ee-dist -DskipTests
-      - mvn: package ${MAVEN_TEST_PARAMS} -pl testsuite/integration/elytron
+      - mvn: ${MAVEN_TEST_BUILD_DEPS}
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dinteg.module -Dts.elytron -rf testsuite/integration/elytron
+
+  ts-iiop:
+    needs: [build]
+    run:
+      # We need to rebuild the dists again, hence the initial install
+      - mvn: ${MAVEN_TEST_BUILD_DEPS}
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.iiop -rf testsuite/integration/iiop
+
+  ts-legacy:
+    needs: [build]
+    run:
+      # We need to rebuild the dists again, hence the initial install
+      - mvn: ${MAVEN_TEST_BUILD_DEPS}
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.legacy -rf testsuite/integration/legacy
+
+  ts-legacy-ejb-client:
+    needs: [build]
+    run:
+      # We need to rebuild the dists again, hence the initial install
+      - mvn: ${MAVEN_TEST_BUILD_DEPS}
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.legacy.ejb.client -rf testsuite/integration/legacy-ejb-client
+
+  ts-manualmode:
+    needs: [build]
+    run:
+      # We need to rebuild the dists again, hence the initial install
+      - mvn: ${MAVEN_TEST_BUILD_DEPS}
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.manualmode -rf testsuite/integration/manualmode/
+
+  ts-microprofile:
+    needs: [build]
+    run:
+      # We need to rebuild the dists again, hence the initial install
+      - mvn: ${MAVEN_TEST_BUILD_DEPS}
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dinteg.module -Dts.microprofile -rf testsuite/integration/microprofile
+
+  ts-multinode:
+    needs: [build]
+    run:
+      # We need to rebuild the dists again, hence the initial install
+      - mvn: ${MAVEN_TEST_BUILD_DEPS}
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.multinode -rf testsuite/integration/multinode
+
+  ts-rbac:
+    needs: [build]
+    run:
+      # We need to rebuild the dists again, hence the initial install
+      - mvn: ${MAVEN_TEST_BUILD_DEPS}
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.rbac -rf testsuite/integration/rbac
+
+  ts-rts:
+    needs: [build]
+    run:
+      # We need to rebuild the dists again, hence the initial install
+      - mvn: ${MAVEN_TEST_BUILD_DEPS}
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.rts -rf testsuite/integration/rts
+
+  ts-secman:
+    needs: [build]
+    run:
+      # We need to rebuild the dists again, hence the initial install
+      - mvn: ${MAVEN_TEST_BUILD_DEPS}
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.secman -rf testsuite/integration/secman
+
+  ts-vdx:
+    needs: [build]
+    run:
+      # We need to rebuild the dists again, hence the initial install
+      - mvn: ${MAVEN_TEST_BUILD_DEPS}
+      - mvn: package ${MAVEN_TEST_PARAMS} -DallTests -pl testsuite/integration/vdx
+
+  ts-xts:
+    needs: [build]
+    run:
+      # We need to rebuild the dists again, hence the initial install
+      - mvn: ${MAVEN_TEST_BUILD_DEPS}
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.xts -rf testsuite/integration/xts
+
+
 
   # TODO - add all the other modules
 
