@@ -1,10 +1,8 @@
 env:
   # Unfortunately GitHub Actions does not allow env vars to reference others so we need to duplicate the content
-  # MAVEN_SMOKE_TEST_PARAMS: -Dmaven.test.failure.ignore=true -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae
   MAVEN_SMOKE_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae
-  # MAVEN_TEST_PARAMS: -Dmaven.test.failure.ignore=true -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae -DallTests
   MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae -DallTests
-# exported jobs are the jobs that the components depending on this will depend upon
+# exported jobs are the jobs that the components builds in the issue yaml depending on this component will depend upon
 exported-jobs: [build]
 jobs:
   # Build the server skipping tests for speed since other jobs depend on this. The maven repo is cached
@@ -25,6 +23,12 @@ jobs:
   # the smoke tests
 
   ts-smoke:
+    # This does the unit tests for all the components and the testsuite
+    # moduled which are run when not passing in -DallTests, i.e.
+    # - standalone
+    # - elytron
+    # - embedded
+    # - scripts
     needs: [build]
     run:
       - mvn: package ${MAVEN_SMOKE_TEST_PARAMS}
@@ -34,6 +38,21 @@ jobs:
     needs: [build]
     run:
       - mvn: package ${MAVEN_TEST_PARAMS} -pl testsuite/domain
+
+  ts-layers:
+    needs: [build]
+    run:
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.layers -pl testsuite/layers
+
+  ts-manualmode:
+    needs: [build]
+    run:
+      - mvn: package ${MAVEN_TEST_PARAMS} -pl testsuite/manualmode
+
+  ts-patching:
+    needs: [build]
+    run:
+      - mvn: package ${MAVEN_TEST_PARAMS} -pl testsuite/patching
 
   ts-rbac:
     needs: [build]
