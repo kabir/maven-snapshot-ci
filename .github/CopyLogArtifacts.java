@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Arrays;
 import java.util.List;
 
 public class CopyLogArtifacts {
@@ -17,8 +18,9 @@ public class CopyLogArtifacts {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length <= 2) {
-            throw new Exception("Not enough args");
+        System.out.println(args.length);
+        if (args.length != 2) {
+            throw new Exception("Wrong number of args: " + Arrays.asList(args));
         }
         Path input = Paths.get(args[0]);
         Path output = Paths.get(args[1]);
@@ -47,7 +49,7 @@ public class CopyLogArtifacts {
                 String fileName = file.getFileName().toString();
                 if (fileName.endsWith(".log")) {
                     copyFile(inputPath, file, outputPath);
-                } else if (fileName.endsWith(".xml")) {
+                } else if (fileName.startsWith("TEST-") && fileName.endsWith(".xml")) {
                     if (file.getParent().getFileName().toString().equals("surefire-reports")) {
                         if (surefireFailed(file)) {
                             copyFile(inputPath, file, outputPath);
@@ -80,7 +82,7 @@ public class CopyLogArtifacts {
         Path relative = parent.relativize(path);
         Path target = outputDir.resolve(relative);
 
-        Files.createDirectories(target);
+        Files.createDirectories(target.getParent());
         System.out.println("Copying " + path + " to " + target);
         Files.copy(path, target);
     }

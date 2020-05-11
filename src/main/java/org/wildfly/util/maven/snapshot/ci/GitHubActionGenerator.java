@@ -28,6 +28,7 @@ import org.yaml.snakeyaml.Yaml;
  * @author <a href="mailto:kabir.khan@jboss.com">Kabir Khan</a>
  */
 public class GitHubActionGenerator {
+    static final String CI_TOOLS_CHECKOUT_FOLDER = ".ci-tools";
     static final String PROJECT_VERSIONS_DIRECTORY = ".project_versions";
     static final Path COMPONENT_JOBS_DIR = Paths.get(".repo-config/component-jobs");
     private final Map<String, Object> workflow = new LinkedHashMap<>();
@@ -173,10 +174,16 @@ public class GitHubActionGenerator {
         }
 
         List<Object> steps = new ArrayList<>();
+        // Get the repo of the component we want to build
         steps.add(
                 new CheckoutBuilder()
                         .setRepo(component.getOrg(), component.getName())
                         .setBranch(component.getBranch())
+                        .build());
+        // Get this repo so that we have a copy of the .github/CopyLogArtifacts.java file for jbang to run
+        steps.add(
+                new CheckoutBuilder()
+                        .setPath(CI_TOOLS_CHECKOUT_FOLDER)
                         .build());
         steps.add(
                 new CacheMavenRepoBuilder()
@@ -217,19 +224,19 @@ public class GitHubActionGenerator {
         final String jobLogsDir = projectLogsDir + "/" + jobName;
         steps.add(
                 new InstallJBangBuilder()
-                        .setIfCondition(IfCondition.FAILURE)
+                        .setIfCondition(IfCondition.ALWAYS)
                         .build());
         steps.add(
                 new RunJBangBuider()
-                        .setScript(".github/CopyLogArtifacts.java")
+                        .setScript(CI_TOOLS_CHECKOUT_FOLDER + "/.github/CopyLogArtifacts.java")
                         .addArgs(".", jobLogsDir)
-                        .setIfCondition(IfCondition.FAILURE)
+                        .setIfCondition(IfCondition.ALWAYS)
                         .build());
         steps.add(
                 new UploadArtifactBuilder()
                         .setName(jobLogsArtifactName)
                         .setPath(projectLogsDir)
-                        .setIfCondition(IfCondition.FAILURE)
+                        .setIfCondition(IfCondition.ALWAYS)
                         .build()
         );
 

@@ -32,12 +32,15 @@ public class RunJBangBuider {
 
     Map<String, Object> build() {
         StringBuilder sb = new StringBuilder();
+        // Run the sdkman init step before trying to use it
+        sb.append("source ~/.sdkman/bin/sdkman-init.sh\n");
         sb.append("jbang ");
         sb.append(script);
         for (String arg : args) {
             sb.append(" ");
             sb.append(arg);
         }
+        sb.append("\n");
 
         Map<String, Object> command = new LinkedHashMap<>();
         command.put("name", "Run JBang");

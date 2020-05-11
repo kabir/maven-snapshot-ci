@@ -9,6 +9,7 @@ import java.util.Map;
 class CheckoutBuilder {
     private String repo;
     private String branch;
+    private String path;
 
     CheckoutBuilder setRepo(String org, String repo) {
         this.repo = org + "/" + repo;
@@ -17,6 +18,11 @@ class CheckoutBuilder {
 
     CheckoutBuilder setBranch(String branch) {
         this.branch = branch;
+        return this;
+    }
+
+    CheckoutBuilder setPath(String path) {
+        this.path = path;
         return this;
     }
 
@@ -38,6 +44,9 @@ class CheckoutBuilder {
         }
         if (branch != null) {
             with.put("ref", branch);
+        }
+        if (path != null) {
+            with.put("path", path);
         }
 
         return with;
