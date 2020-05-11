@@ -1,4 +1,5 @@
 env:
+  MAVEN_TEST_BUILD_DEPS: install -pl build,dist,ee-dist,ee-build -DskipTests
   # Unfortunately GitHub Actions does not allow env vars to reference others so we need to duplicate the content
   MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae -DallTests
 # exported jobs are the jobs that the components builds in the issue yaml depending on this component will depend upon
@@ -8,7 +9,6 @@ jobs:
   build:
     env:
       MAVEN_BUILD_EXTRA_PARAMS: -DlegacyBuild -DlegacyRelease -DskipTests
-      MAVEN_TEST_BUILD_DEPS: install -pl build,dist,ee-dist,ee-build -DskipTests
     run:
       # Do not quote the usage of the env vars, or the quotes get wrapped in single quutes,
       # which means they don't take effect (e.g. -DskipTests from MAVEN_BUILD_EXTRA_PARAMS will not work!)
@@ -22,7 +22,6 @@ jobs:
   # Build the server again and run all the unit and smoke tests
   # it is different from the other testsuite tests in that we want to build everything up to and including
   # the smoke tests
-
   ts-smoke:
     needs: [build]
     run:

@@ -209,23 +209,20 @@ public class GitHubActionGenerator {
                         .setName(getVersionArtifactName(component.getName()))
                         .setPath(versionFileName)
                         .build());
+
         steps.addAll(context.createBuildSteps());
 
-        //Upload a zip of the logs
-        // First zip it to conveniently match the patterns
-        final String logZipName = jobName + "-logs.zip";
-        steps.add(
-                new ZipLogsAndReportsBuilder()
-                    .setFile(logZipName)
-                    .setIfCondition(IfCondition.FAILURE)
-                    .build());
-        // Then unzip it to somewhere else
+        // Copy across the build artifacts to the folder and upload the 'root' folder
         final String projectLogsDir = ".project-build-logs";
-        final String unzipDir = projectLogsDir + "/" + jobName;
+        final String jobLogsDir = projectLogsDir + "/" + jobName;
         steps.add(
-                new UnzipLogsAndReportsBuilder()
-                        .setName(logZipName)
-                        .setDirectory(unzipDir)
+                new InstallJBangBuilder()
+                        .setIfCondition(IfCondition.FAILURE)
+                        .build());
+        steps.add(
+                new RunJBangBuider()
+                        .setScript(".github/CopyLogArtifacts.java")
+                        .addArgs(".", jobLogsDir)
                         .setIfCondition(IfCondition.FAILURE)
                         .build());
         steps.add(
