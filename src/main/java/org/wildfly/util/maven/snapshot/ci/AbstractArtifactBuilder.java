@@ -47,8 +47,4 @@ public abstract class AbstractArtifactBuilder<T> {
     }
 
     abstract T getThis();
-
-    protected String formatName(String name) {
-        return name;
-    }
 }

@@ -18,9 +18,9 @@ import org.wildfly.util.maven.snapshot.ci.config.component.ComponentJobsConfigPa
 import org.wildfly.util.maven.snapshot.ci.config.component.JobConfig;
 import org.wildfly.util.maven.snapshot.ci.config.component.JobRunElementConfig;
 import org.wildfly.util.maven.snapshot.ci.config.issue.Component;
+import org.wildfly.util.maven.snapshot.ci.config.issue.Dependency;
 import org.wildfly.util.maven.snapshot.ci.config.issue.IssueConfig;
 import org.wildfly.util.maven.snapshot.ci.config.issue.IssueConfigParser;
-import org.wildfly.util.maven.snapshot.ci.config.issue.Dependency;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
@@ -36,12 +36,14 @@ public class GitHubActionGenerator {
     private final Path yamlConfig;
     private final String branchName;
     private final String issueNumber;
+    private String jobLogsArtifactName;
 
     private GitHubActionGenerator(Path workflowFile, Path yamlConfig, String branchName, String issueNumber) {
         this.workflowFile = workflowFile;
         this.yamlConfig = yamlConfig;
         this.branchName = branchName;
         this.issueNumber = issueNumber;
+
     }
 
     static GitHubActionGenerator create(Path workflowDir, Path yamlConfig, String branchName, String issueNumber) {
@@ -86,7 +88,10 @@ public class GitHubActionGenerator {
     }
 
     private void setupJobs(IssueConfig issueConfig) throws Exception {
-        Map<String, Object> componentJobs = new LinkedHashMap<>();
+
+        this.jobLogsArtifactName = createJobLogsArtifactName(issueConfig);
+
+        final Map<String, Object> componentJobs = new LinkedHashMap<>();
 
         for (Component component : issueConfig.getComponents()) {
             Path componentJobsFile = COMPONENT_JOBS_DIR.resolve(component.getName() + ".yml");
@@ -103,6 +108,24 @@ public class GitHubActionGenerator {
             }
         }
         workflow.put("jobs", componentJobs);
+    }
+
+    private String createJobLogsArtifactName(IssueConfig issueConfig) {
+        final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss");
+        final String timestamp = simpleDateFormat.format(new Date());
+        String jobLogsArtifactName = issueConfig.getName() + "-logs-" + timestamp;
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < jobLogsArtifactName.length(); i++) {
+            char c = jobLogsArtifactName.charAt(i);
+            if (Character.isLetter(c)) {
+                sb.append(Character.toLowerCase(c));
+            } else if (Character.isDigit(c) || c == '-' || c == '_') {
+                sb.append(c);
+            } else {
+                sb.append('_');
+            }
+        }
+        return sb.toString();
     }
 
     private void setupDefaultComponentBuildJob(Map<String, Object> componentJobs, Component component) {
@@ -190,28 +213,26 @@ public class GitHubActionGenerator {
 
         //Upload a zip of the logs
         // First zip it to conveniently match the patterns
-        final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss");
-        final String timestamp = simpleDateFormat.format(new Date());
-        final String logZipName = jobName + "-logs" + timestamp + ".zip";
+        final String logZipName = jobName + "-logs.zip";
         steps.add(
                 new ZipLogsAndReportsBuilder()
                     .setFile(logZipName)
-                    .setIfCondition(IfCondition.ALWAYS)
+                    .setIfCondition(IfCondition.FAILURE)
                     .build());
         // Then unzip it to somewhere else
-        final String unzipDir = ".project-build-logs";
+        final String projectLogsDir = ".project-build-logs";
+        final String unzipDir = projectLogsDir + "/" + jobName;
         steps.add(
                 new UnzipLogsAndReportsBuilder()
                         .setName(logZipName)
                         .setDirectory(unzipDir)
-                        .setIfCondition(IfCondition.ALWAYS)
+                        .setIfCondition(IfCondition.FAILURE)
                         .build());
         steps.add(
                 new UploadArtifactBuilder()
-                        .setName(jobName + "-logs-" + timestamp)
-                        .setPath(unzipDir)
-                        .setTimestamp(timestamp)
-                        .setIfCondition(IfCondition.ALWAYS)
+                        .setName(jobLogsArtifactName)
+                        .setPath(projectLogsDir)
+                        .setIfCondition(IfCondition.FAILURE)
                         .build()
         );
 
@@ -219,6 +240,7 @@ public class GitHubActionGenerator {
 
         return job;
     }
+
 
     private String getComponentBuildId(String name) {
         return name + "-build";
