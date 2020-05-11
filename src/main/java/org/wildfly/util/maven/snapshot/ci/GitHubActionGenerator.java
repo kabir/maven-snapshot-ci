@@ -224,19 +224,19 @@ public class GitHubActionGenerator {
         final String jobLogsDir = projectLogsDir + "/" + jobName;
         steps.add(
                 new InstallJBangBuilder()
-                        .setIfCondition(IfCondition.ALWAYS)
+                        .setIfCondition(IfCondition.FAILURE)
                         .build());
         steps.add(
                 new RunJBangBuider()
                         .setScript(CI_TOOLS_CHECKOUT_FOLDER + "/.github/CopyLogArtifacts.java")
                         .addArgs(".", jobLogsDir)
-                        .setIfCondition(IfCondition.ALWAYS)
+                        .setIfCondition(IfCondition.FAILURE)
                         .build());
         steps.add(
                 new UploadArtifactBuilder()
                         .setName(jobLogsArtifactName)
                         .setPath(projectLogsDir)
-                        .setIfCondition(IfCondition.ALWAYS)
+                        .setIfCondition(IfCondition.FAILURE)
                         .build()
         );
 
