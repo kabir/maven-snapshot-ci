@@ -1,7 +1,7 @@
 env:
   MAVEN_TEST_BUILD_DEPS: install -pl build,dist,ee-dist,ee-build -DskipTests
   # Unfortunately GitHub Actions does not allow env vars to reference others so we need to duplicate the content
-  MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae -DallTests
+  MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae
 # exported jobs are the jobs that the components builds in the issue yaml depending on this component will depend upon
 exported-jobs: [build]
 jobs:
@@ -39,7 +39,7 @@ jobs:
     run:
       # We need to rebuild the dists again, hence the initial install
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
-      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.clustering -rf testsuite/integration/clustering/
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.clustering -pl testsuite/integration/clustering/
 
   ts-domain:
     needs: [build]
@@ -53,42 +53,42 @@ jobs:
     run:
       # We need to rebuild the dists again, hence the initial install
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
-      - mvn: package ${MAVEN_TEST_PARAMS} -Dinteg.module -Dts.elytron -rf testsuite/integration/elytron
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dinteg.module -Dts.elytron -pl testsuite/integration/elytron
 
   ts-iiop:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
-      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.iiop -rf testsuite/integration/iiop
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.iiop -pl testsuite/integration/iiop
 
   ts-legacy:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
-      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.legacy -rf testsuite/integration/legacy
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.legacy -pl testsuite/integration/legacy
 
   ts-legacy-ejb-client:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
-      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.legacy.ejb.client -rf testsuite/integration/legacy-ejb-client
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.legacy.ejb.client -pl testsuite/integration/legacy-ejb-client
 
   ts-manualmode:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
-      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.manualmode -rf testsuite/integration/manualmode/
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.manualmode -pl testsuite/integration/manualmode/
 
   ts-microprofile:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
-      - mvn: package ${MAVEN_TEST_PARAMS} -Dinteg.module -Dts.microprofile -rf testsuite/integration/microprofile
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.microprofile -rf testsuite/integration/microprofile
 
   ts-multinode:
     needs: [build]
@@ -102,21 +102,21 @@ jobs:
     run:
       # We need to rebuild the dists again, hence the initial install
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
-      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.rbac -rf testsuite/integration/rbac
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.rbac -pl testsuite/integration/rbac
 
   ts-rts:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
-      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.rts -rf testsuite/integration/rts
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.rts -pl testsuite/integration/rts
 
   ts-secman:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
-      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.secman -rf testsuite/integration/secman
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.secman -pl testsuite/integration/secman
 
   ts-vdx:
     needs: [build]
