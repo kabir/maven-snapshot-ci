@@ -6,8 +6,8 @@ import java.util.Map;
 /**
  * @author <a href="mailto:kabir.khan@jboss.com">Kabir Khan</a>
  */
-public interface IssueConfig extends ConfigElement {
+public interface IssueConfig {
     String getName();
-    Map<String, Object> getEnv();
+    Map<String, String> getEnv();
     List<Component> getComponents();
 }

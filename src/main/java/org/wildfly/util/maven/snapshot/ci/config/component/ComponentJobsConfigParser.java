@@ -13,12 +13,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.wildfly.util.maven.snapshot.ci.config.BaseParser;
 import org.yaml.snakeyaml.Yaml;
 
 /**
  * @author <a href="mailto:kabir.khan@jboss.com">Kabir Khan</a>
  */
-public class ComponentJobsConfigParser {
+public class ComponentJobsConfigParser extends BaseParser {
     private final Path yamlFile;
     private final String componentName;
     private final Set<String> jobKeys = new HashSet<>();
@@ -54,10 +55,8 @@ public class ComponentJobsConfigParser {
             throw new IllegalStateException("No 'jobs' entry");
         }
 
-        Map<String, String> mainEnv = Collections.emptyMap();
-        if (envInput != null) {
-            mainEnv = parseEnv(envInput);
-        }
+        Map<String, String> mainEnv = parseEnv(envInput);
+
         Map<String, JobConfig> jobs = parseJobs(mainEnv, jobsInput);
         if (jobs.size() == 0) {
             throw new IllegalStateException("'jobs' entry is empty");
@@ -215,22 +214,6 @@ public class ComponentJobsConfigParser {
             }
         }
         return new JobRunElementConfig(type, command);
-    }
-
-    private Map<String, String> parseEnv(Object input) {
-        if (input instanceof Map == false) {
-            throw new IllegalStateException("Not an instance of Map");
-        }
-        Map<String, Object> map = (Map)input;
-        Map<String, String> result = new LinkedHashMap<>();
-        for (String key : map.keySet()) {
-            Object value = map.get(key);
-            if (value instanceof String == false && value instanceof Number == false) {
-                throw new IllegalStateException("Value under key '" + key + "' is not a String or a Number");
-            }
-            result.put(key, value.toString());
-        }
-        return result;
     }
 
     private String createJobName(String jobKey) {

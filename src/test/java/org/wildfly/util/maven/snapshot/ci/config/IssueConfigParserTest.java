@@ -24,7 +24,7 @@ public class IssueConfigParserTest {
 
         Assert.assertNotNull(issueConfig);
 
-        Map<String, Object> env = issueConfig.getEnv();
+        Map<String, String> env = issueConfig.getEnv();
         Assert.assertEquals(2, env.size());
         Assert.assertEquals("-Xms756M -Xmx1g", env.get("MAVEN_OPTS"));
         Assert.assertEquals("value1", env.get("VALUE1"));

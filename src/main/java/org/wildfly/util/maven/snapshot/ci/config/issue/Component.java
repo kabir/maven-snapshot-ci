@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * @author <a href="mailto:kabir.khan@jboss.com">Kabir Khan</a>
  */
-public interface Component extends ConfigElement {
+public interface Component {
     String getName();
 
     String getOrg();
