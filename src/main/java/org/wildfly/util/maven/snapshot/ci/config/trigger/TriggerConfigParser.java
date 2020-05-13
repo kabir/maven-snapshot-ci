@@ -1,4 +1,4 @@
-package org.wildfly.util.maven.snapshot.ci.config.issue;
+package org.wildfly.util.maven.snapshot.ci.config.trigger;
 
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
@@ -15,18 +15,18 @@ import org.yaml.snakeyaml.Yaml;
 /**
  * @author <a href="mailto:kabir.khan@jboss.com">Kabir Khan</a>
  */
-public class IssueConfigParser extends BaseParser {
+public class TriggerConfigParser extends BaseParser {
     private final Path yamlFile;
 
-    private IssueConfigParser(Path yamlFile) {
+    private TriggerConfigParser(Path yamlFile) {
         this.yamlFile = yamlFile;
     }
 
-    public static IssueConfigParser create(Path yamlFile) {
-        return new IssueConfigParser(yamlFile);
+    public static TriggerConfigParser create(Path yamlFile) {
+        return new TriggerConfigParser(yamlFile);
     }
 
-    public IssueConfig parse()  {
+    public TriggerConfig parse()  {
         Map<String, Object> map = null;
         try {
             Yaml yaml = new Yaml();
@@ -47,7 +47,7 @@ public class IssueConfigParser extends BaseParser {
 
         List<Component> components = parseComponents(componentsInput);
 
-        return new IssueConfigImpl((String) name, env, components);
+        return new TriggerConfigImpl((String) name, env, components);
     }
 
     private List<Component> parseComponents(Object input) {

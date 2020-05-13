@@ -1,4 +1,4 @@
-package org.wildfly.util.maven.snapshot.ci.config.issue;
+package org.wildfly.util.maven.snapshot.ci.config.trigger;
 
 import java.util.List;
 

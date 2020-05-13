@@ -17,10 +17,10 @@ import org.wildfly.util.maven.snapshot.ci.config.component.ComponentJobsConfig;
 import org.wildfly.util.maven.snapshot.ci.config.component.ComponentJobsConfigParser;
 import org.wildfly.util.maven.snapshot.ci.config.component.JobConfig;
 import org.wildfly.util.maven.snapshot.ci.config.component.JobRunElementConfig;
-import org.wildfly.util.maven.snapshot.ci.config.issue.Component;
-import org.wildfly.util.maven.snapshot.ci.config.issue.Dependency;
-import org.wildfly.util.maven.snapshot.ci.config.issue.IssueConfig;
-import org.wildfly.util.maven.snapshot.ci.config.issue.IssueConfigParser;
+import org.wildfly.util.maven.snapshot.ci.config.trigger.Component;
+import org.wildfly.util.maven.snapshot.ci.config.trigger.Dependency;
+import org.wildfly.util.maven.snapshot.ci.config.trigger.TriggerConfig;
+import org.wildfly.util.maven.snapshot.ci.config.trigger.TriggerConfigParser;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
@@ -56,11 +56,11 @@ public class GitHubActionGenerator {
         if (workflow.size() > 0) {
             throw new IllegalStateException("generate() called twice?");
         }
-        IssueConfig issueConfig = IssueConfigParser.create(yamlConfig).parse();
+        TriggerConfig triggerConfig = TriggerConfigParser.create(yamlConfig).parse();
         System.out.println("Wil create workflow file at " + workflowFile.toAbsolutePath());
 
-        setupWorkFlowHeaderSection(issueConfig);
-        setupJobs(issueConfig);
+        setupWorkFlowHeaderSection(triggerConfig);
+        setupJobs(triggerConfig);
 
         DumperOptions options = new DumperOptions();
         options.setIndent(2);
@@ -75,26 +75,26 @@ public class GitHubActionGenerator {
         Files.write(workflowFile, output.getBytes(StandardCharsets.UTF_8));
     }
 
-    private void setupWorkFlowHeaderSection(IssueConfig issueConfig) {
-        workflow.put("name", issueConfig.getName());
+    private void setupWorkFlowHeaderSection(TriggerConfig triggerConfig) {
+        workflow.put("name", triggerConfig.getName());
         workflow.put("on", Collections.singletonMap("push", Collections.singletonMap("branches", branchName)));
 
-        if (issueConfig.getEnv().size() > 0) {
+        if (triggerConfig.getEnv().size() > 0) {
             Map<String, Object> env = new HashMap<>();
-            for (String key : issueConfig.getEnv().keySet()) {
-                env.put(key, issueConfig.getEnv().get(key));
+            for (String key : triggerConfig.getEnv().keySet()) {
+                env.put(key, triggerConfig.getEnv().get(key));
             }
             workflow.put("env", env);
         }
     }
 
-    private void setupJobs(IssueConfig issueConfig) throws Exception {
+    private void setupJobs(TriggerConfig triggerConfig) throws Exception {
 
-        this.jobLogsArtifactName = createJobLogsArtifactName(issueConfig);
+        this.jobLogsArtifactName = createJobLogsArtifactName(triggerConfig);
 
         final Map<String, Object> componentJobs = new LinkedHashMap<>();
 
-        for (Component component : issueConfig.getComponents()) {
+        for (Component component : triggerConfig.getComponents()) {
             Path componentJobsFile = COMPONENT_JOBS_DIR.resolve(component.getName() + ".yml");
             if (!Files.exists(componentJobsFile)) {
                 System.out.println("No " + componentJobsFile + " found");
@@ -111,10 +111,10 @@ public class GitHubActionGenerator {
         workflow.put("jobs", componentJobs);
     }
 
-    private String createJobLogsArtifactName(IssueConfig issueConfig) {
+    private String createJobLogsArtifactName(TriggerConfig triggerConfig) {
         final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss");
         final String timestamp = simpleDateFormat.format(new Date());
-        String jobLogsArtifactName = issueConfig.getName() + "-logs-" + timestamp;
+        String jobLogsArtifactName = triggerConfig.getName() + "-logs-" + timestamp;
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < jobLogsArtifactName.length(); i++) {
             char c = jobLogsArtifactName.charAt(i);

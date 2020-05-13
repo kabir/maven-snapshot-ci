@@ -8,28 +8,28 @@ import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.wildfly.util.maven.snapshot.ci.config.issue.Component;
-import org.wildfly.util.maven.snapshot.ci.config.issue.IssueConfig;
-import org.wildfly.util.maven.snapshot.ci.config.issue.IssueConfigParser;
+import org.wildfly.util.maven.snapshot.ci.config.trigger.Component;
+import org.wildfly.util.maven.snapshot.ci.config.trigger.TriggerConfig;
+import org.wildfly.util.maven.snapshot.ci.config.trigger.TriggerConfigParser;
 
 /**
  * @author <a href="mailto:kabir.khan@jboss.com">Kabir Khan</a>
  */
-public class IssueConfigParserTest {
+public class TriggerConfigParserTest {
     @Test
     public void testParseYaml() throws Exception {
         URL url = this.getClass().getResource("issue-test.yml");
         Path path = Paths.get(url.toURI());
-        IssueConfig issueConfig = IssueConfigParser.create(path).parse();
+        TriggerConfig triggerConfig = TriggerConfigParser.create(path).parse();
 
-        Assert.assertNotNull(issueConfig);
+        Assert.assertNotNull(triggerConfig);
 
-        Map<String, String> env = issueConfig.getEnv();
+        Map<String, String> env = triggerConfig.getEnv();
         Assert.assertEquals(2, env.size());
         Assert.assertEquals("-Xms756M -Xmx1g", env.get("MAVEN_OPTS"));
         Assert.assertEquals("value1", env.get("VALUE1"));
 
-        List<Component> components = issueConfig.getComponents();
+        List<Component> components = triggerConfig.getComponents();
         Assert.assertNotNull(components);
         Assert.assertEquals(2, components.size());
 
