@@ -139,7 +139,7 @@ public class TriggerConfigParser extends BaseParser {
 
     private void validateType(Class<?> clazz, Object value, String name, String description) {
         if (!clazz.isAssignableFrom(value.getClass())) {
-            String msg = String.format("'%s' for %s was not a %s", name, description, clazz.getSimpleName());
+            String msg = String.format("'%s' for %s was not a %s: %s", name, description, clazz.getSimpleName(), value);
             throw new IllegalStateException(msg);
         }
     }
