@@ -26,22 +26,21 @@ jobs:
 
     # Either build the tool with Maven, or download it from the releases
     # Maven:
-#    - uses: actions/checkout@v2
-#      with:
-#        repository: overbaard/multi-repo-ci
-#        path: .ci-tools
-#    - name: Build with Maven
-#      working-directory: .ci-tools
-#      run: |
-#        pwd
-#        ls -R .
-#        mvn -B package
-#        echo "::set-env name=TOOL_JAR::.ci-tools/target/multi-repo-ci-tool.jar"
-      # Download
-    - name: Download multi-repo-ci-tool.jar
+    - uses: actions/checkout@v2
+      with:
+        repository: overbaard/multi-repo-ci
+        path: .ci-tools
+    - name: Build with Maven
+      working-directory: .ci-tools
       run: |
-        wget http://github.com/overbaard/multi-repo-ci/releases/latest/download/multi-repo-ci-tool.jar
-        echo "::set-env name=TOOL_JAR::multi-repo-ci-tool.jar"
+        mvn -B package
+        echo "::set-env name=TOOL_JAR::.ci-tools/target/multi-repo-ci-tool.jar"
+        cp target/multi-repo-ci-tool.jar ..
+      # Download
+#    - name: Download multi-repo-ci-tool.jar
+#      run: |
+#        wget http://github.com/overbaard/multi-repo-ci/releases/latest/download/multi-repo-ci-tool.jar
+#        echo "::set-env name=TOOL_JAR::multi-repo-ci-tool.jar"
 
     - name: Create branch
       run: |
@@ -51,7 +50,7 @@ jobs:
         git config --global user.email "ci@example.com"
         git config --global user.name "CI Action"
         echo "${{ github.event.issue.body }}" > config.yml
-        java -jar ${TOOL_JAR} --workflow-dir=.github/workflows --yaml=config.yml --issue=${{ github.event.issue.number }} --branch=$BRANCH
+        java -jar ${TOOL_JAR} generate-workflow --workflow-dir=.github/workflows --yaml=config.yml --issue=${{ github.event.issue.number }} --branch=$BRANCH
         git add -A
         git commit -m "Testing file for #${{ github.event.issue.number }} - ${{ github.event.issue.title }}"
         git push --force origin "${BRANCH}"
