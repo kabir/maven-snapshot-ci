@@ -18,7 +18,7 @@ jobs:
       with:
         # The personal access token must be something which has the workflow permissions
         # (I also used repo, admin:repo_hook and user)
-        token: ${{ secrets.CI_PAT }}
+        token: ${{ secrets.OB_MULTI_CI_PAT }}
 
 # Cache is not usable with issues events
 #    - uses: actions/cache@v1
