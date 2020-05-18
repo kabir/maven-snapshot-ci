@@ -26,19 +26,22 @@ jobs:
 
     # Either build the tool with Maven, or download it from the releases
     # Maven:
-    - uses: actions/checkout@v2
-      with:
-        repository: overbaard/multi-repo-ci
-        path: .ci-tools
-    - name: Build with Maven
-      working-directory: .ci-tools
+#    - uses: actions/checkout@v2
+#      with:
+#        repository: overbaard/multi-repo-ci
+#        path: .ci-tools
+#    - name: Build with Maven
+#      working-directory: .ci-tools
+#      run: |
+#        pwd
+#        ls -R .
+#        mvn -B package
+#        echo "::set-env name=TOOL_JAR::.ci-tools/target/multi-repo-ci-tool.jar"
+      # Download
+    - name: Download multi-repo-ci-tool.jar
       run: |
-        pwd
-        ls -R .
-        mvn -B package
-        echo "::set-env name=TOOL_JAR::.ci-tools/target/multi-repo-ci-tool.jar"
-    # Download
-    # TODO
+        wget http://github.com/overbaard/multi-repo-ci/releases/latest/download/multi-repo-ci-tool.jar
+        echo "::set-env name=TOOL_JAR::multi-repo-ci-tool.jar"
 
     - name: Create branch
       run: |
