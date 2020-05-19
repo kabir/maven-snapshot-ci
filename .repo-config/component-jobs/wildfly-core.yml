@@ -37,7 +37,7 @@ jobs:
   ts-domain:
     needs: [build]
     run:
-      - mvn: package ${MAVEN_TEST_PARAMS} -pl testsuite/domain
+      - mvn: package ${MAVEN_TEST_PARAMS} -pl testsuite/domain -Dts.timeout.factor=300
 
   ts-layers:
     needs: [build]
