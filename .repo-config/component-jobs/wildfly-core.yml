@@ -31,38 +31,32 @@ jobs:
     # - scripts
     needs: [build]
     run:
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: package ${MAVEN_SMOKE_TEST_PARAMS}
 
 
   ts-domain:
     needs: [build]
     run:
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: package ${MAVEN_TEST_PARAMS} -pl testsuite/domain -Dts.timeout.factor=300
 
   ts-layers:
     needs: [build]
     run:
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: package ${MAVEN_TEST_PARAMS} -Dts.layers -pl testsuite/layers
 
   ts-manualmode:
     needs: [build]
     run:
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: package ${MAVEN_TEST_PARAMS} -pl testsuite/manualmode
 
   ts-patching:
     needs: [build]
     run:
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: package ${MAVEN_TEST_PARAMS} -pl testsuite/patching
 
   ts-rbac:
     needs: [build]
     run:
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: package ${MAVEN_TEST_PARAMS} -pl testsuite/rbac
 
   # TODO - add all the other modules

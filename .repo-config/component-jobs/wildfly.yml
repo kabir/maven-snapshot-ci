@@ -31,7 +31,6 @@ jobs:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
       # Increase timeout to see if it helps
       - mvn: package ${MAVEN_TEST_PARAMS} -Dts.basic -pl testsuite/integration/basic/,testsuite/integration/ws/ -Dts.timeout.factor=300
@@ -40,7 +39,6 @@ jobs:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
       - mvn: package ${MAVEN_TEST_PARAMS} -Dts.clustering -pl testsuite/integration/clustering/
 
@@ -48,7 +46,6 @@ jobs:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
       - mvn: package ${MAVEN_TEST_PARAMS} -Dts.domain -pl testsuite/domain
 
@@ -56,7 +53,6 @@ jobs:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
       - mvn: package ${MAVEN_TEST_PARAMS} -Dinteg.module -Dts.elytron -pl testsuite/integration/elytron
 
@@ -64,7 +60,6 @@ jobs:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
       - mvn: package ${MAVEN_TEST_PARAMS} -Dts.iiop -pl testsuite/integration/iiop
 
@@ -72,7 +67,6 @@ jobs:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
       - mvn: package ${MAVEN_TEST_PARAMS} -Dts.legacy -pl testsuite/integration/legacy
 
@@ -80,7 +74,6 @@ jobs:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
       - mvn: package ${MAVEN_TEST_PARAMS} -Dts.legacy.ejb.client -pl testsuite/integration/legacy-ejb-client
 
@@ -88,7 +81,6 @@ jobs:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
       - mvn: package ${MAVEN_TEST_PARAMS} -Dts.manualmode -pl testsuite/integration/manualmode/
 
@@ -96,7 +88,6 @@ jobs:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
       - mvn: package ${MAVEN_TEST_PARAMS} -Dts.microprofile -rf testsuite/integration/microprofile
 
@@ -104,7 +95,6 @@ jobs:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
       # Increase timeout to see if it helps
       - mvn: package ${MAVEN_TEST_PARAMS} -Dts.multinode -rf testsuite/integration/multinode -Dts.timeout.factor=300
@@ -113,7 +103,6 @@ jobs:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
       - mvn: package ${MAVEN_TEST_PARAMS} -Dts.rbac -pl testsuite/integration/rbac
 
@@ -121,7 +110,6 @@ jobs:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
       - mvn: package ${MAVEN_TEST_PARAMS} -Dts.rts -pl testsuite/integration/rts
 
@@ -129,7 +117,6 @@ jobs:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
       - mvn: package ${MAVEN_TEST_PARAMS} -Dts.secman -pl testsuite/integration/secman
 
@@ -137,7 +124,6 @@ jobs:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
       - mvn: package ${MAVEN_TEST_PARAMS} -DallTests -pl testsuite/integration/vdx
 
@@ -145,7 +131,6 @@ jobs:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
-      - shell: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
       - mvn: package ${MAVEN_TEST_PARAMS} -Dts.xts -rf testsuite/integration/xts
 
