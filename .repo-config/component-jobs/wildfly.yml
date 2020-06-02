@@ -32,8 +32,9 @@ jobs:
     run:
       # We need to rebuild the dists again, hence the initial install
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
-      # Increase timeout to see if it helps
-      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.basic -pl testsuite/integration/basic/,testsuite/integration/ws/ -Dts.timeout.factor=300
+      # Run tests that are skipped on ipv6
+      - mvn: package ${MAVEN_IPV4_TEST_PARAMS} -Dts.basic -pl testsuite/integration/basic/ -Dtest=DiscoveryGroupExternalMessagingDeploymentTestCase
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.basic -pl testsuite/integration/basic/,testsuite/integration/ws/
 
   ts-clustering:
     needs: [build]
