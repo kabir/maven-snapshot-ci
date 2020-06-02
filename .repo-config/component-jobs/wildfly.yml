@@ -96,8 +96,9 @@ jobs:
     run:
       # We need to rebuild the dists again, hence the initial install
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
-      # Increase timeout to see if it helps
-      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.multinode -rf testsuite/integration/multinode -Dts.timeout.factor=300
+      # Add -DforkMode=always since the database timer tests seem to have some timing issues setting up and
+      # tearing down the H2 database otherwise
+      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.multinode -rf testsuite/integration/multinode -DforkMode=always
 
   ts-rbac:
     needs: [build]
