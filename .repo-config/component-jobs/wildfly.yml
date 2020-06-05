@@ -36,13 +36,30 @@ jobs:
       - mvn: package ${MAVEN_IPV4_TEST_PARAMS} -Dts.basic -pl testsuite/integration/basic/ -Dtest=DiscoveryGroupExternalMessagingDeploymentTestCase
       - mvn: package ${MAVEN_TEST_PARAMS} -Dts.basic -pl testsuite/integration/basic/,testsuite/integration/ws/
 
-  ts-clustering:
+#  ts-clustering:
+#    needs: [build]
+#    run:
+#      # We need to rebuild the dists again, hence the initial install
+#      - mvn: ${MAVEN_TEST_BUILD_DEPS}
+#      # - mvn: package ${MAVEN_TEST_PARAMS} -Dts.clustering -pl testsuite/integration/clustering/ -Dts.timeout.factor=300
+#      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.clustering -pl testsuite/integration/clustering/
+
+  ts-clustering-1:
     needs: [build]
     run:
       # We need to rebuild the dists again, hence the initial install
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
       # - mvn: package ${MAVEN_TEST_PARAMS} -Dts.clustering -pl testsuite/integration/clustering/ -Dts.timeout.factor=300
-      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.clustering -pl testsuite/integration/clustering/
+      - mvn: package ${MAVEN_TEST_PARAMS} -pl testsuite/integration/clustering/ -Dts.noSmoke -Dts.clustering -P \!ts.clustering.cluster.fullha.profile,\!ts.clustering.single.profile,\!ts.clustering.byteman.profile -Dts.surefire.clustering.ha.additionalExcludes=affinity\|cdi\|dispatcher\|ejb\|ejb2\|group\|jms\|jpa
+
+  ts-clustering-2:
+    needs: [build]
+    run:
+      # We need to rebuild the dists again, hence the initial install
+      - mvn: ${MAVEN_TEST_BUILD_DEPS}
+      # - mvn: package ${MAVEN_TEST_PARAMS} -Dts.clustering -pl testsuite/integration/clustering/ -Dts.timeout.factor=300
+      - mvn: package ${MAVEN_TEST_PARAMS} -pl testsuite/integration/clustering/ -Dts.noSmoke -Dts.clustering -Dts.surefire.clustering.ha.additionalExcludes=jsf\|provider\|registry\|singleton\|sso\|web\|xsite
+
 
   ts-domain:
     needs: [build]
