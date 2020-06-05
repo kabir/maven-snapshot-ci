@@ -1,0 +1,64 @@
+name: WildFly Core Only
+'on':
+  push:
+    branches: multi-repo-ci-branch-7
+env:
+  MAVEN_OPTS: -Xms756M -Xmx1g
+jobs:
+  wildfly-core-build:
+    name: wildfly-core-build
+    runs-on: ubuntu-latest
+    env:
+      MAVEN_SMOKE_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae -DallTests
+      MAVEN_BUILD_EXTRA_PARAMS: -DlegacyBuild -DlegacyRelease -DskipTests
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly-core
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Grab project version
+      run: |
+        mvn -B help:evaluate -Dexpression=project.version -pl .
+        TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
+        echo "version: ${TMP}"
+        mkdir -p .project_versions
+        echo "${TMP}" > .project_versions/wildfly-core
+    - uses: actions/upload-artifact@v2
+      with:
+        name: version-wildfly-core
+        path: .project_versions/wildfly-core
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Maven Build
+      run: "mvn -B install ${MAVEN_TEST_PARAMS} ${MAVEN_BUILD_EXTRA_PARAMS} \necho\
+        \ \"build done!\"\n"
+    - name: Set up TMate for SSH debugging
+      uses: mxschmitt/action-tmate@v2
+    - name: Run multi-repo-ci-tool '{}' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-core-build
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-core-build.zip wildfly-core-build
+        rm -rf wildfly-core-build
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_core_only-logs-20200605-141836
+        path: .project-build-logs
