@@ -30,7 +30,7 @@ jobs:
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
         echo "Saving version to env var: \$VERSION_xnio"
-        echo "::set-env name=VERSION_xnio::${TMP}"
+        echo "::set-output name=VERSION_xnio::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
     - name: Build with Maven
@@ -76,7 +76,7 @@ jobs:
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
         echo "Saving version to env var: \$VERSION_jboss_remoting"
-        echo "::set-env name=VERSION_jboss_remoting::${TMP}"
+        echo "::set-output name=VERSION_jboss_remoting::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
     - name: Build with Maven
