@@ -29,7 +29,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_xnio
+        echo "Saving version to env var: \$VERSION_xnio"
         echo "::set-env name=VERSION_xnio::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -47,7 +47,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   jboss-remoting-build:
     name: jboss-remoting
@@ -75,7 +75,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_jboss_remoting
+        echo "Saving version to env var: \$VERSION_jboss_remoting"
         echo "::set-env name=VERSION_jboss_remoting::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -93,7 +93,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   wildfly-core-build:
     name: wildfly-core-build
@@ -128,7 +128,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_wildfly_core
+        echo "Saving version to env var: \$VERSION_wildfly_core"
         echo "::set-env name=VERSION_wildfly_core::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -150,7 +150,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   wildfly-build:
     name: wildfly-build
@@ -183,7 +183,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_wildfly
+        echo "Saving version to env var: \$VERSION_wildfly"
         echo "::set-env name=VERSION_wildfly::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -204,7 +204,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   wildfly-ts-smoke:
     name: wildfly-ts-smoke
@@ -237,7 +237,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_wildfly
+        echo "Saving version to env var: \$VERSION_wildfly"
         echo "::set-env name=VERSION_wildfly::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -256,7 +256,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   wildfly-ts-basic:
     name: wildfly-ts-basic
@@ -289,7 +289,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_wildfly
+        echo "Saving version to env var: \$VERSION_wildfly"
         echo "::set-env name=VERSION_wildfly::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -310,7 +310,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   wildfly-ts-clustering:
     name: wildfly-ts-clustering
@@ -343,7 +343,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_wildfly
+        echo "Saving version to env var: \$VERSION_wildfly"
         echo "::set-env name=VERSION_wildfly::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -363,7 +363,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   wildfly-ts-domain:
     name: wildfly-ts-domain
@@ -396,7 +396,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_wildfly
+        echo "Saving version to env var: \$VERSION_wildfly"
         echo "::set-env name=VERSION_wildfly::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -416,7 +416,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   wildfly-ts-elytron:
     name: wildfly-ts-elytron
@@ -449,7 +449,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_wildfly
+        echo "Saving version to env var: \$VERSION_wildfly"
         echo "::set-env name=VERSION_wildfly::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -469,7 +469,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   wildfly-ts-iiop:
     name: wildfly-ts-iiop
@@ -502,7 +502,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_wildfly
+        echo "Saving version to env var: \$VERSION_wildfly"
         echo "::set-env name=VERSION_wildfly::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -522,7 +522,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   wildfly-ts-legacy:
     name: wildfly-ts-legacy
@@ -555,7 +555,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_wildfly
+        echo "Saving version to env var: \$VERSION_wildfly"
         echo "::set-env name=VERSION_wildfly::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -575,7 +575,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   wildfly-ts-legacy-ejb-client:
     name: wildfly-ts-legacy-ejb-client
@@ -608,7 +608,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_wildfly
+        echo "Saving version to env var: \$VERSION_wildfly"
         echo "::set-env name=VERSION_wildfly::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -628,7 +628,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   wildfly-ts-manualmode:
     name: wildfly-ts-manualmode
@@ -661,7 +661,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_wildfly
+        echo "Saving version to env var: \$VERSION_wildfly"
         echo "::set-env name=VERSION_wildfly::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -681,7 +681,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   wildfly-ts-microprofile:
     name: wildfly-ts-microprofile
@@ -714,7 +714,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_wildfly
+        echo "Saving version to env var: \$VERSION_wildfly"
         echo "::set-env name=VERSION_wildfly::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -734,7 +734,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   wildfly-ts-multinode:
     name: wildfly-ts-multinode
@@ -767,7 +767,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_wildfly
+        echo "Saving version to env var: \$VERSION_wildfly"
         echo "::set-env name=VERSION_wildfly::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -787,7 +787,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   wildfly-ts-rbac:
     name: wildfly-ts-rbac
@@ -820,7 +820,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_wildfly
+        echo "Saving version to env var: \$VERSION_wildfly"
         echo "::set-env name=VERSION_wildfly::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -840,7 +840,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   wildfly-ts-rts:
     name: wildfly-ts-rts
@@ -873,7 +873,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_wildfly
+        echo "Saving version to env var: \$VERSION_wildfly"
         echo "::set-env name=VERSION_wildfly::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -893,7 +893,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   wildfly-ts-secman:
     name: wildfly-ts-secman
@@ -926,7 +926,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_wildfly
+        echo "Saving version to env var: \$VERSION_wildfly"
         echo "::set-env name=VERSION_wildfly::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -946,7 +946,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   wildfly-ts-vdx:
     name: wildfly-ts-vdx
@@ -979,7 +979,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_wildfly
+        echo "Saving version to env var: \$VERSION_wildfly"
         echo "::set-env name=VERSION_wildfly::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -999,7 +999,7 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
   wildfly-ts-xts:
     name: wildfly-ts-xts
@@ -1032,7 +1032,7 @@ jobs:
         mvn -B help:evaluate -Dexpression=project.version -pl .
         TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
         echo "version: ${TMP}"
-        Saving version to env var: $VERSION_wildfly
+        echo "Saving version to env var: \$VERSION_wildfly"
         echo "::set-env name=VERSION_wildfly::${TMP}"
     - name: Add '::1 localhost' to hosts file
       run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
@@ -1052,6 +1052,5 @@ jobs:
     - uses: actions/upload-artifact@v2
       if: ${{ failure() }}
       with:
-        name: xnio_and_remoting-logs-20200907-134313
+        name: xnio_and_remoting-logs-20200907-141135
         path: .project-build-logs
-
