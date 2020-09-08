@@ -28,7 +28,9 @@ jobs:
     # Maven:
     - uses: actions/checkout@v2
       with:
-        repository: overbaard/multi-repo-ci
+        #repository: overbaard/multi-repo-ci
+        repository: kabir/multi-repo-ci
+        ref: grab-maven-artifacts
         path: .ci-tools
     - name: Build with Maven
       working-directory: .ci-tools
