@@ -2,8 +2,8 @@ env:
   MAVEN_TEST_BUILD_DEPS: install -pl build,dist,ee-dist,ee-build -DskipTests
   # Unfortunately GitHub Actions does not allow env vars to reference others so we need to duplicate the content
   MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae
-# exported jobs are the jobs that the components builds in the issue yaml depending on this component will depend upon
-exported-jobs: [build]
+# build-job is the job that the components builds in the issue yaml depending on this component will depend upon
+build-job: build
 jobs:
   # Build the server skipping tests for speed since other jobs depend on this. The maven repo is cached
   build:
