@@ -28,9 +28,9 @@ jobs:
     # Maven:
     - uses: actions/checkout@v2
       with:
-        repository: overbaard/multi-repo-ci
-        #repository: kabir/multi-repo-ci
-        #ref: status-issue-report
+        #repository: overbaard/multi-repo-ci
+        repository: kabir/multi-repo-ci
+        ref: cleanup-job
         path: .ci-tools
     - name: Build with Maven
       working-directory: .ci-tools
