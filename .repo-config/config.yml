@@ -6,3 +6,10 @@ issue-reporting:
   labels:
    success: CI-Success
    failure: CI-Failure
+end-job:
+  steps:
+    - name: test
+      run: |-
+        echo hello
+        ls -al ${OB_ARTIFACTS_DIR}
+   
