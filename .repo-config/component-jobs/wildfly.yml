@@ -15,6 +15,17 @@ jobs:
       - mvn: install ${MAVEN_TEST_PARAMS} ${MAVEN_BUILD_EXTRA_PARAMS}
       - shell: ls -R dist/target/
       - shell: echo "build done!"
+      # Temp code
+      - shell: echo My version: ${OB_PROJECT_VERSION}
+      
+  save-dist-zip-and-artifacts:
+    needs: [build]
+    run:
+      - mvn: install -pl dist -Prelease 
+      - shell: |
+        cp dist/target/wildfly-${OB_PROJECT_VERSION}.zip ${OB_ARTIFACTS}/wildfly.zip
+        # Would be better to just zip and copy the repo here
+        cp dist/target/wildfly-galleon-pack-${OB_PROJECT_VERSION}-all-artifacts-list.txt ${OB_ARTIFACTS}/all-artifacts.zip
 
   #####################################
   # Parallel tests - depend on wildfly-core-build
