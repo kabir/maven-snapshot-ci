@@ -14,6 +14,8 @@ jobs:
       # which means they don't take effect (e.g. -DskipTests from MAVEN_BUILD_EXTRA_PARAMS will not work!)
       - mvn: install ${MAVEN_TEST_PARAMS} ${MAVEN_BUILD_EXTRA_PARAMS}
       - shell: echo "build done!"
+      # Temp stuff
+      - shell: echo "Hello" >> ${OB_ARTIFACTS_DIR}/sample-artifact.txt
 
   #####################################
   # Parallel tests - depend on wildfly-core-build
