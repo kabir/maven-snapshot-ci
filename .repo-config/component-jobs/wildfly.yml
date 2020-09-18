@@ -16,7 +16,7 @@ jobs:
       - shell: ls -R dist/target/
       - shell: echo "build done!"
       # Temp code
-      - shell: echo My version: ${OB_PROJECT_VERSION}
+      - shell: echo "My version: ${OB_PROJECT_VERSION}"
       
   save-dist-zip-and-artifacts:
     needs: [build]
