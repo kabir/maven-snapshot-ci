@@ -21,6 +21,7 @@ jobs:
   save-dist-zip-and-artifacts:
     needs: [build]
     run:
+      - shell: pwd
       - mvn: install -pl dist -Prelease
       - shell: mv dist/target/wildfly-${OB_PROJECT_VERSION}.zip ${OB_ARTIFACTS_DIR}/wildfly.zip
       # It would be nice if we could use an action to do the clone instead
@@ -30,8 +31,9 @@ jobs:
       - shell: cd ../../..
       - shell: java -jar wildfly-s2i/tools/maven-repo-generator/target/maven-repo-generator-1.0.jar dist/target/wildfly-galleon-pack-${OB_PROJECT_VERSION}-all-artifacts-list.txt
       # Temp ls -al
-      - shell: ls -al
+      - shell: pwd ; ls -al
       - shell: mv maven-repo.zip ${OB_ARTIFACTS_DIR}/maven-repo.zip
+      - shell: ls -al ${OB_ARTIFACTS_DIR}
 
   #####################################
   # Parallel tests - depend on wildfly-core-build
