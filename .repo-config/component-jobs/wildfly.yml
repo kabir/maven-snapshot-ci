@@ -22,7 +22,7 @@ jobs:
     needs: [build]
     run:
       - mvn: install -pl dist -Prelease
-      - shell: cp dist/target/wildfly-${OB_PROJECT_VERSION}.zip ${OB_ARTIFACTS_DIR}/wildfly.zip
+      - shell: mv dist/target/wildfly-${OB_PROJECT_VERSION}.zip ${OB_ARTIFACTS_DIR}/wildfly.zip
       # It would be nice if we could use an action to do the clone instead
       - shell: git clone https://github.com/wildfly/wildfly-s2i.git
       - shell: cd wildfly-s2i/tools/maven-repo-generator
@@ -31,7 +31,7 @@ jobs:
       - shell: java -jar wildfly-s2i/tools/maven-repo-generator/target/maven-repo-generator-1.0.jar dist/target/wildfly-galleon-pack-${OB_PROJECT_VERSION}-all-artifacts-list.txt
       # Temp ls -al
       - shell: ls -al
-      - shell: cp wildfly-s2i/tools/maven-repo-generator/target/maven-repo.zip ${OB_ARTIFACTS_DIR}/maven-repo.zip
+      - shell: mv maven-repo.zip ${OB_ARTIFACTS_DIR}/maven-repo.zip
 
   #####################################
   # Parallel tests - depend on wildfly-core-build
