@@ -6,7 +6,7 @@ env:
 build-job: build
 jobs:
   # Build the server skipping tests for speed since other jobs depend on this. The maven repo is cached
-build:
+  build:
     env:
       MAVEN_BUILD_EXTRA_PARAMS: -DlegacyBuild -DlegacyRelease -DskipTests
     run:
@@ -17,13 +17,14 @@ build:
       - shell: echo "build done!"
       # Temp code
       - shell: "echo My version: ${OB_PROJECT_VERSION}"
-save-dist-zip-and-artifacts:
-  needs: [build]
-  run:
-    - mvn: install -pl dist -Prelease
-    - shell: cp dist/target/wildfly-${OB_PROJECT_VERSION}.zip ${OB_ARTIFACTS}/wildfly.zip
-    # TODO use https://github.com/wildfly/wildfly-s2i/tree/master/tools/maven-repo-generator to create the zip
-    - shell: cp dist/target/wildfly-galleon-pack-${OB_PROJECT_VERSION}-all-artifacts-list.txt ${OB_ARTIFACTS}/all-artifacts.zip
+  # Build the server dist and the maven repo and copy across to the artifacts folder
+  save-dist-zip-and-artifacts:
+    needs: [build]
+    run:
+      - mvn: install -pl dist -Prelease
+      - shell: cp dist/target/wildfly-${OB_PROJECT_VERSION}.zip ${OB_ARTIFACTS}/wildfly.zip
+      # TODO use https://github.com/wildfly/wildfly-s2i/tree/master/tools/maven-repo-generator to create the zip
+      - shell: cp dist/target/wildfly-galleon-pack-${OB_PROJECT_VERSION}-all-artifacts-list.txt ${OB_ARTIFACTS}/all-artifacts.zip
 
   #####################################
   # Parallel tests - depend on wildfly-core-build
@@ -45,13 +46,13 @@ save-dist-zip-and-artifacts:
       - mvn: package ${MAVEN_IPV4_TEST_PARAMS} -Dts.basic -pl testsuite/integration/basic/ -Dtest=DiscoveryGroupExternalMessagingDeploymentTestCase
       - mvn: package ${MAVEN_TEST_PARAMS} -Dts.basic -pl testsuite/integration/basic/,testsuite/integration/ws/
 
-#  ts-clustering:
-#    needs: [build]
-#    run:
-#      # We need to rebuild the dists again, hence the initial install
-#      - mvn: ${MAVEN_TEST_BUILD_DEPS}
-#      # - mvn: package ${MAVEN_TEST_PARAMS} -Dts.clustering -pl testsuite/integration/clustering/ -Dts.timeout.factor=300
-#      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.clustering -pl testsuite/integration/clustering/
+  #  ts-clustering:
+  #    needs: [build]
+  #    run:
+  #      # We need to rebuild the dists again, hence the initial install
+  #      - mvn: ${MAVEN_TEST_BUILD_DEPS}
+  #      # - mvn: package ${MAVEN_TEST_PARAMS} -Dts.clustering -pl testsuite/integration/clustering/ -Dts.timeout.factor=300
+  #      - mvn: package ${MAVEN_TEST_PARAMS} -Dts.clustering -pl testsuite/integration/clustering/
 
   ts-clustering-1:
     needs: [build]
@@ -162,10 +163,6 @@ save-dist-zip-and-artifacts:
       # We need to rebuild the dists again, hence the initial install
       - mvn: ${MAVEN_TEST_BUILD_DEPS}
       - mvn: package ${MAVEN_TEST_PARAMS} -Dts.xts -rf testsuite/integration/xts
-
-
-
-  # TODO - add all the other modules
 
   #####################################
   # Parallel tests - END
