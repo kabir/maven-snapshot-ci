@@ -17,15 +17,13 @@ build:
       - shell: echo "build done!"
       # Temp code
       - shell: "echo My version: ${OB_PROJECT_VERSION}"
-
-  save-dist-zip-and-artifacts:
-    needs: [build]
-    run:
-      - mvn: install -pl dist -Prelease
-      - shell: cp dist/target/wildfly-${OB_PROJECT_VERSION}.zip ${OB_ARTIFACTS}/wildfly.zip
-      # TODO use https://github.com/wildfly/wildfly-s2i/tree/master/tools/maven-repo-generator to create the repo zip instead
-      - shell: cp dist/target/wildfly-galleon-pack-${OB_PROJECT_VERSION}-all-artifacts-list.txt ${OB_ARTIFACTS}/all-artifacts.zip
-
+save-dist-zip-and-artifacts:
+  needs: [build]
+  run:
+    - mvn: install -pl dist -Prelease
+    - shell: cp dist/target/wildfly-${OB_PROJECT_VERSION}.zip ${OB_ARTIFACTS}/wildfly.zip
+    # TODO use https://github.com/wildfly/wildfly-s2i/tree/master/tools/maven-repo-generator to create the zip
+    - shell: cp dist/target/wildfly-galleon-pack-${OB_PROJECT_VERSION}-all-artifacts-list.txt ${OB_ARTIFACTS}/all-artifacts.zip
 
   #####################################
   # Parallel tests - depend on wildfly-core-build
