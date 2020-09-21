@@ -1,12 +1,76 @@
+name: WildFly Only
+'on':
+  push:
 env:
-  MAVEN_TEST_BUILD_DEPS: install -pl build,dist,ee-dist,ee-build -DskipTests
-  # Unfortunately GitHub Actions does not allow env vars to reference others so we need to duplicate the content
-  MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap -Dci-cleanup=true -fae
-# build-job is the job that the components builds in the issue yaml depending on this component will depend upon
-build-job: build
+  MAVEN_OPTS: -Xms756M -Xmx1g
 jobs:
-  # Build the server skipping tests for speed since other jobs depend on this. The maven repo is cached
-  build:
+  wildfly-ob-end-job-wildfly:
+    name: wildfly-ob-end-job-wildfly
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
     env:
-      MAVEN_BUILD_EXTRA_PARAMS: -DlegacyBuild -DlegacyRelease -DskipTests
-    run:
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      MAVEN_TEST_BUILD_DEPS: install -pl build,dist,ee-dist,ee-build -DskipTests
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - uses: actions/checkout@v2
+      with:
+        repository: wildfly/wildfly-s2i
+        path: .maven-repo-generator
+    - name: generate maven repo
+      run: |
+        pwd
+        cd tools/maven-repo-generator
+        mvn install
+        ls -al target 
+      working-directory: .maven-repo-generator
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ob-end-job-wildfly
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ob-end-job-wildfly.zip wildfly-ob-end-job-wildfly
+        rm -rf wildfly-ob-end-job-wildfly
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20200921-153822
+        path: .project-build-logs
+
+        
