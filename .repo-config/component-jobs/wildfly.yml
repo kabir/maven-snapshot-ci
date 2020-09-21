@@ -186,7 +186,7 @@ end-job:
     - run: |
         # Important to remember ${OB_MAVEN_DEPENDENCY_VERSIONS} here!
         mvn install -pl dist -Prelease ${OB_MAVEN_DEPENDENCY_VERSIONS}
-        cat dist/target/
+        cat dist/target/wildfly-galleon-pack-${OB_PROJECT_VERSION}-all-artifacts-list.txt
         mv dist/target/wildfly-${OB_PROJECT_VERSION}.zip ${OB_ARTIFACTS_DIR}/wildfly.zip
     - run: |
         cd wildfly-s2i/tools/maven-repo-generator
