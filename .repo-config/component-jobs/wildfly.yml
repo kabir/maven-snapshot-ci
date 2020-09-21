@@ -18,22 +18,22 @@ jobs:
       # Temp code
       - shell: "echo My version: ${OB_PROJECT_VERSION}"
   # Build the server dist and the maven repo and copy across to the artifacts folder
-  save-dist-zip-and-artifacts:
-    needs: [build]
-    run:
-      - shell: pwd
-      - mvn: install -pl dist -Prelease
-      - shell: mv dist/target/wildfly-${OB_PROJECT_VERSION}.zip ${OB_ARTIFACTS_DIR}/wildfly.zip
-      # It would be nice if we could use an action to do the clone instead
-      - shell: git clone https://github.com/wildfly/wildfly-s2i.git
-      - shell: cd wildfly-s2i/tools/maven-repo-generator
-      - mvn: install
-      - shell: cd ../../..
-      - shell: java -jar wildfly-s2i/tools/maven-repo-generator/target/maven-repo-generator-1.0.jar dist/target/wildfly-galleon-pack-${OB_PROJECT_VERSION}-all-artifacts-list.txt
-      # Temp ls -al
-      - shell: pwd ; ls -al
-      - shell: mv maven-repo.zip ${OB_ARTIFACTS_DIR}/maven-repo.zip
-      - shell: ls -al ${OB_ARTIFACTS_DIR}
+#   save-dist-zip-and-artifacts:
+#     needs: [build]
+#     run:
+#       - shell: pwd
+#       - mvn: install -pl dist -Prelease
+#       - shell: mv dist/target/wildfly-${OB_PROJECT_VERSION}.zip ${OB_ARTIFACTS_DIR}/wildfly.zip
+#       # It would be nice if we could use an action to do the clone instead
+#       - shell: git clone https://github.com/wildfly/wildfly-s2i.git
+#       - shell: cd wildfly-s2i/tools/maven-repo-generator
+#       - mvn: install
+#       - shell: cd ../../..
+#       - shell: java -jar wildfly-s2i/tools/maven-repo-generator/target/maven-repo-generator-1.0.jar dist/target/wildfly-galleon-pack-${OB_PROJECT_VERSION}-all-artifacts-list.txt
+#       # Temp ls -al
+#       - shell: pwd ; ls -al
+#       - shell: mv maven-repo.zip ${OB_ARTIFACTS_DIR}/maven-repo.zip
+#       - shell: ls -al ${OB_ARTIFACTS_DIR}
 
   #####################################
   # Parallel tests - depend on wildfly-core-build
@@ -175,3 +175,23 @@ jobs:
 
   #####################################
   # Parallel tests - END
+
+end-job:
+  if: ${{ always() }}
+  steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: wildfly/wildfly-s2i
+        path: .maven-repo-generator
+    - run: |
+        # Important to remember ${OB_MAVEN_DEPENDENCY_VERSIONS} here!
+        mvn install -pl dist -Prelease ${OB_MAVEN_DEPENDENCY_VERSIONS}
+        cat dist/target/
+        mv dist/target/wildfly-${OB_PROJECT_VERSION}.zip ${OB_ARTIFACTS_DIR}/wildfly.zip
+    - run: |
+        cd wildfly-s2i/tools/maven-repo-generator
+        mvn install
+        java -jar wildfly-s2i/tools/maven-repo-generator/target/maven-repo-generator-1.0.jar dist/target/wildfly-galleon-pack-${OB_PROJECT_VERSION}-all-artifacts-list.txt
+        mv maven-repo.zip ${OB_ARTIFACTS_DIR}/maven-repo.zip
+        ls -al ${OB_ARTIFACTS_DIR}
+      working-directory: .maven-repo-generator
