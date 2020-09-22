@@ -11,10 +11,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    env:
+      blah: ${GITHUB_WORKSPACE}/test
     steps:
     - run: |
         echo home: ${HOME}
         echo workspace: ${GITHUB_WORKSPACE}
         echo pwd on next line
         pwd
+        echo blah: ${blah}
