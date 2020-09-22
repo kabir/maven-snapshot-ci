@@ -14,7 +14,7 @@ jobs:
 
     steps:
     - run: |
-      echo home: ${HOME}
-      echo workspace: ${GITHUB_WORKSPACE}
-      echo pwd on next line
-      pwd
+        echo home: ${HOME}
+        echo workspace: ${GITHUB_WORKSPACE}
+        echo pwd on next line
+        pwd
