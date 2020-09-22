@@ -15,8 +15,10 @@ jobs:
       blah: ${GITHUB_WORKSPACE}/test
       #blah2: ${{GITHUB_WORKSPACE}}/test
       blah2: ${GITHUB_WORKSPACE}/test
+      blah4: test
     steps:
     - run: echo "::set-env name=blah3::${GITHUB_WORKSPACE}/test"
+    - run: echo "::set-env name=blah4::${GITHUB_WORKSPACE}/${blah4}"   
     - run: |
         echo home: ${HOME}
         echo workspace: ${GITHUB_WORKSPACE}
@@ -25,3 +27,4 @@ jobs:
         echo blah: ${blah}
         echo blah2: ${blah2}
         echo blah3: ${blah3}
+        echo blah4: ${blah4}
