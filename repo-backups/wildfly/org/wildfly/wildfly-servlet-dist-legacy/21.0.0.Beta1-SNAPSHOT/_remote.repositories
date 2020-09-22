@@ -1,0 +1,8 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Tue Sep 22 10:49:57 UTC 2020
+wildfly-servlet-dist-legacy-21.0.0.Beta1-SNAPSHOT.zip>=
+wildfly-servlet-dist-legacy-21.0.0.Beta1-SNAPSHOT-web-distro-src.tar.gz>=
+wildfly-servlet-dist-legacy-21.0.0.Beta1-SNAPSHOT.tar.gz>=
+wildfly-servlet-dist-legacy-21.0.0.Beta1-SNAPSHOT-web-distro-src.zip>=
+wildfly-servlet-dist-legacy-21.0.0.Beta1-SNAPSHOT.jar>=
+wildfly-servlet-dist-legacy-21.0.0.Beta1-SNAPSHOT.pom>=

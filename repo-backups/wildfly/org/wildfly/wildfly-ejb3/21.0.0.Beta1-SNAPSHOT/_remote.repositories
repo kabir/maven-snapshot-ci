@@ -1,0 +1,5 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Tue Sep 22 10:44:04 UTC 2020
+wildfly-ejb3-21.0.0.Beta1-SNAPSHOT-sources.jar>=
+wildfly-ejb3-21.0.0.Beta1-SNAPSHOT.pom>=
+wildfly-ejb3-21.0.0.Beta1-SNAPSHOT.jar>=

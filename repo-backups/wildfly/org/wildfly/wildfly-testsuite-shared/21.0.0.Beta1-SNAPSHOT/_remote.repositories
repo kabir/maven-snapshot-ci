@@ -1,0 +1,5 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Tue Sep 22 10:50:02 UTC 2020
+wildfly-testsuite-shared-21.0.0.Beta1-SNAPSHOT.jar>=
+wildfly-testsuite-shared-21.0.0.Beta1-SNAPSHOT-sources.jar>=
+wildfly-testsuite-shared-21.0.0.Beta1-SNAPSHOT.pom>=

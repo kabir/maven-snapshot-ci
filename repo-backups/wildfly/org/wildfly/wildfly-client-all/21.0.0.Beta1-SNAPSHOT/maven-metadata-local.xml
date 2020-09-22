@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata modelVersion="1.1.0">
+  <groupId>org.wildfly</groupId>
+  <artifactId>wildfly-client-all</artifactId>
+  <version>21.0.0.Beta1-SNAPSHOT</version>
+  <versioning>
+    <snapshot>
+      <localCopy>true</localCopy>
+    </snapshot>
+    <lastUpdated>20200922104454</lastUpdated>
+    <snapshotVersions>
+      <snapshotVersion>
+        <classifier>sources</classifier>
+        <extension>jar</extension>
+        <value>21.0.0.Beta1-SNAPSHOT</value>
+        <updated>20200922104454</updated>
+      </snapshotVersion>
+      <snapshotVersion>
+        <extension>jar</extension>
+        <value>21.0.0.Beta1-SNAPSHOT</value>
+        <updated>20200922104453</updated>
+      </snapshotVersion>
+      <snapshotVersion>
+        <extension>pom</extension>
+        <value>21.0.0.Beta1-SNAPSHOT</value>
+        <updated>20200922104453</updated>
+      </snapshotVersion>
+    </snapshotVersions>
+  </versioning>
+</metadata>

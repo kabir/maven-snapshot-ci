@@ -1,0 +1,8 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Tue Sep 22 10:48:28 UTC 2020
+wildfly-dist-legacy-21.0.0.Beta1-SNAPSHOT-src.tar.gz>=
+wildfly-dist-legacy-21.0.0.Beta1-SNAPSHOT.pom>=
+wildfly-dist-legacy-21.0.0.Beta1-SNAPSHOT.zip>=
+wildfly-dist-legacy-21.0.0.Beta1-SNAPSHOT-src.zip>=
+wildfly-dist-legacy-21.0.0.Beta1-SNAPSHOT.jar>=
+wildfly-dist-legacy-21.0.0.Beta1-SNAPSHOT.tar.gz>=

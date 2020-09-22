@@ -1,0 +1,5 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Tue Sep 22 10:43:18 UTC 2020
+wildfly-clustering-service-21.0.0.Beta1-SNAPSHOT-sources.jar>=
+wildfly-clustering-service-21.0.0.Beta1-SNAPSHOT.pom>=
+wildfly-clustering-service-21.0.0.Beta1-SNAPSHOT.jar>=

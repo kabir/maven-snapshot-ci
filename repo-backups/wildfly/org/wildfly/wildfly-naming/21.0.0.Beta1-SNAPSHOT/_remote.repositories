@@ -1,0 +1,5 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Tue Sep 22 10:43:23 UTC 2020
+wildfly-naming-21.0.0.Beta1-SNAPSHOT-sources.jar>=
+wildfly-naming-21.0.0.Beta1-SNAPSHOT.pom>=
+wildfly-naming-21.0.0.Beta1-SNAPSHOT.jar>=

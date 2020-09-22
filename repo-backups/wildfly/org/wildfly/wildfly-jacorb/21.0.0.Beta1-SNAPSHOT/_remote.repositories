@@ -1,0 +1,5 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Tue Sep 22 10:45:33 UTC 2020
+wildfly-jacorb-21.0.0.Beta1-SNAPSHOT.pom>=
+wildfly-jacorb-21.0.0.Beta1-SNAPSHOT-sources.jar>=
+wildfly-jacorb-21.0.0.Beta1-SNAPSHOT.jar>=
