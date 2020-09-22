@@ -1,13 +1,8 @@
-name: WildFly Core Only
+name: WildFly Only
 env:
   MAVEN_OPTS: -Xms756M -Xmx1g
 components:
-  - name: wildfly-core
+  - name: wildfly
     org: kabir
     branch: gh-action-fixes
-    debug: true
-
-
-
-
-
+    #debug: true
