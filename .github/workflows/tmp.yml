@@ -13,7 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       blah: ${GITHUB_WORKSPACE}/test
-      blah2: ${{GITHUB_WORKSPACE}}/test
+      #blah2: ${{GITHUB_WORKSPACE}}/test
+      blah2: ${GITHUB_WORKSPACE}/test
     steps:
     - run: echo "::set-env name=blah3::${GITHUB_WORKSPACE}/test"
     - run: |
