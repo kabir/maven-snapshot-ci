@@ -44,7 +44,8 @@ jobs:
   ts-smoke:
     needs: [build]
     run:
-      - mvn: package ${MAVEN_TEST_PARAMS}
+#      - mvn: package ${MAVEN_TEST_PARAMS}
+      - shell: echo Hello >> ${OB_ARTIFACTS_DIR}/smoke-output.txt
 
 #   ts-basic:
 #     needs: [build]
