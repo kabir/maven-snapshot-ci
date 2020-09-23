@@ -1,0 +1,30 @@
+name: Scratch
+'on':
+  push:
+    branches: scratch
+env:
+  TEST_VERSIONA: 10.0.0.Beta-SNAPSHOT
+  TEST_VERSIONB: 20.0.0.Beta-SNAPSHOT
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    env:
+      OB_MAVEN_DEPENDENCY_VERSIONS: -Dversion.A=${TEST_VERSIONA} -Dversion.B=${TEST_VERSIONB}
+    steps:
+    - run: |
+        echo a
+        echo ${TEST_VERSIONA}
+        echo b
+        echo ${TEST_VERSIONB}
+        # echo all - raw
+        # echo ${OB_MAVEN_DEPENDENCY_VERSIONS}
+        # echo "::set-env name=OB_MAVEN_DEPENDENCY_VERSIONS::${OB_MAVEN_DEPENDENCY_VERSIONS}"
+        # echo all - expanded1
+        # echo ${OB_MAVEN_DEPENDENCY_VERSIONS}
+        echo "::set-env name=XYZ::-Dversion.A=${TEST_VERSIONA} -Dversion.B=${TEST_VERSIONB}"
+        echo all - expanded2
+        echo ${XYZ}
+        echo "${XYZ}"
+        echo done
+
