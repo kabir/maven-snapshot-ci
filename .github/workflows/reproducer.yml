@@ -45,11 +45,11 @@ jobs:
       run: |
         mvn -B install ${MAVEN_TEST_PARAMS} ${MAVEN_BUILD_EXTRA_PARAMS}
         echo build done!
-    - name: Delete bad tests
-      run: |
-        rm testsuite/manualmode/src/test/java/org/jboss/as/test/manualmode/management/persistence/RemoteSshGitRepositoryTestCase.java
+#    - name: Delete bad tests
+#      run: |
+#        rm testsuite/manualmode/src/test/java/org/jboss/as/test/manualmode/management/persistence/RemoteSshGitRepositoryTestCase.java
     - name: Test build Build
-      run: mvn -B package ${MAVEN_TEST_PARAMS} -pl testsuite/manualmode
+      run: mvn -B package ${MAVEN_TEST_PARAMS} -pl testsuite/manualmode -Dtest=RemoteSshGitRepositoryTestCase
     - if: ${{ failure() }}
       run: |
         mkdir -p .project-build-logs
