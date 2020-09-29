@@ -1,0 +1,147 @@
+name: WildFly Core Only
+'on':
+  push:
+    branches: multi-repo-ci-branch-7
+env:
+  MAVEN_OPTS: -Xms756M -Xmx1g
+jobs:
+  wildfly-core-build:
+    name: wildfly-core-build
+    runs-on:
+    - ubuntu-latest
+    env:
+      MAVEN_SMOKE_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae -DallTests
+      MAVEN_BUILD_EXTRA_PARAMS: -DlegacyBuild -DlegacyRelease -DskipTests
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly-core
+        ref: gh-action-fixes
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: echo "::set-env name=OB_ARTIFACTS_DIR::${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}"
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: echo "::set-env name=OB_STATUS_TEXT::${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}"
+    - name: Ensure artifacts dir is there
+      run: |
+        mkdir -p ${OB_ARTIFACTS_DIR}
+        touch ${OB_STATUS_TEXT}
+    - name: Maven Build
+      run: "mvn -B install ${MAVEN_TEST_PARAMS} ${MAVEN_BUILD_EXTRA_PARAMS} \necho\
+        \ \"build done!\"\n"
+    - name: Delete bad tests
+      run: |
+        rm testsuite/manualmode/src/test/java/org/jboss/as/test/manualmode/management/persistence/RemoteSshGitRepositoryTestCase.java
+    - name: Test build Build
+      run: "mvn -B package ${MAVEN_TEST_PARAMS} -pl testsuite/manualmode \n"
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-core-build.zip wildfly-core-build
+        rm -rf wildfly-core-build
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_core_only-logs-20200929-182401
+        path: .project-build-logs
+  
+  wildfly-core-ts-manualmode:
+    name: wildfly-core-ts-manualmode
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_VERSION_WILDFLY_CORE: ${{ needs.wildfly-core-build.outputs.version_wildfly_core}}
+      MAVEN_SMOKE_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae -DallTests
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-core-build.outputs.version_wildfly_core
+        }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-core-build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly-core
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-7
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: echo "::set-env name=OB_ARTIFACTS_DIR::${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}"
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: echo "::set-env name=OB_STATUS_TEXT::${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}"
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B package ${MAVEN_TEST_PARAMS} -pl testsuite/manualmode \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --global user.name "CI Action"
+        git config --global user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-core-ts-manualmode" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-core-ts-manualmode
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-core-ts-manualmode.zip wildfly-core-ts-manualmode
+        rm -rf wildfly-core-ts-manualmode
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_core_only-logs-20200929-182401
+        path: .project-build-logs
+  
