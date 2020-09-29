@@ -50,6 +50,10 @@ jobs:
 #        rm testsuite/manualmode/src/test/java/org/jboss/as/test/manualmode/management/persistence/RemoteSshGitRepositoryTestCase.java
     - name: Test build Build
       run: mvn -B package ${MAVEN_TEST_PARAMS} -pl testsuite/manualmode -Dtest=RemoteSshGitRepositoryTestCase
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-core-build
     - if: ${{ failure() }}
       run: |
         mkdir -p .project-build-logs
