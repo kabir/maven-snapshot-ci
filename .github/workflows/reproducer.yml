@@ -1,7 +1,6 @@
 name: WildFly Core Only
 'on':
   push:
-    branches: reproducer
 env:
   MAVEN_OPTS: -Xms756M -Xmx1g
 jobs:
