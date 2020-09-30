@@ -23,6 +23,10 @@ jobs:
       with:
         repository: kabir/wildfly-core
         ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.ref }}
+        path: .ci-tools
     - uses: actions/cache@v1
       with:
         path: ~/.m2/repository
