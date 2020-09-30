@@ -28,6 +28,7 @@ jobs:
     - name: Git command-line work
       run: |
         pwd
+        which java
         TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
         git fetch origin ${TMP}
         git rebase origin/${TMP}
