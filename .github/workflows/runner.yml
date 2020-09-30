@@ -1,0 +1,64 @@
+name: Fake end job on own runner
+'on':
+  push:
+env:
+  MAVEN_OPTS: -Xms756M -Xmx1g
+jobs:
+  fake-end-job:
+    name: fake-end-job
+    runs-on:
+    - end-job
+    env:
+      MAVEN_OPTS: -Xmx1g -Xmx1g
+      OB_ARTIFACTS_DIR: artifacts
+      OB_STATUS_TEXT: artifacts/status-text.txt
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+    if: ${{ always() }}
+    steps:
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: echo "::set-env name=OB_ARTIFACTS_DIR::${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}"
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: echo "::set-env name=OB_STATUS_TEXT::${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}"
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.ref }}
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      run: |
+        pwd
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - run: |
+        mkdir -p ${OB_ARTIFACTS_DIR}
+        touch ${OB_STATUS_TEXT}
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: test
+      run: |-
+        echo "workflow end job" >> $OB_STATUS_TEXT
+        ls -al ${OB_ARTIFACTS_DIR}
+    - name: Dump GitHub context
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+      run: echo "$GITHUB_CONTEXT"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      if: ${{ success() }}
+      run: |
+        git config --global user.name "CI Action"
+        git config --global user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by ob-ci-end-job" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+
+  
