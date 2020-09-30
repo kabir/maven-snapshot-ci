@@ -42,10 +42,9 @@ jobs:
       run: |-
         echo "workflow end job" >> $OB_STATUS_TEXT
         ls -al ${OB_ARTIFACTS_DIR}
-    - name: Dump GitHub context
-      env:
-        GITHUB_CONTEXT: ${{ toJson(github) }}
-      run: echo "$GITHUB_CONTEXT"
+        echo hello from end job >> ${OB_ARTIFACTS_DIR}/test.txt
+        sudo mkdir /var/www/html/endjob
+        sudo cp ${OB_ARTIFACTS_DIR}/test.txt /var/www/html/endjob/
     - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
       run: |
         java -jar multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
