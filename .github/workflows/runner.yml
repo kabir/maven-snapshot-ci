@@ -60,5 +60,9 @@ jobs:
         git fetch origin ${TMP}
         git rebase origin/${TMP}
         git push origin ${TMP}
+    - name: Dump GitHub context
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+      run: echo "$GITHUB_CONTEXT"
 
   
