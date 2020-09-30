@@ -1,11 +1,11 @@
-name: WildFly Core Only
+name: WildFly Full Only
 'on':
   push:
 env:
   MAVEN_OPTS: -Xms756M -Xmx1g
 jobs:
-  wildfly-core-build:
-    name: wildfly-core-build
+  wildfly-build:
+    name: wildfly-build
     runs-on:
     - ubuntu-latest
     env:
@@ -20,7 +20,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        repository: kabir/wildfly-core
+        repository: kabir/wildfly
         ref: gh-action-fixes
     - uses: actions/checkout@v2
       with:
@@ -51,11 +51,11 @@ jobs:
     # - name: Setup tmate session
     #   uses: mxschmitt/action-tmate@v3
     - name: Test build Build
-      run: mvn -B package ${MAVEN_TEST_PARAMS} -pl testsuite/manualmode -Dtest=RemoteSshGitRepositoryTestCase
+      run: mvn -B package ${MAVEN_TEST_PARAMS} -Dinteg.module -Dts.elytron -pl testsuite/integration/elytron -Dtest=TLSSyslogAuditLogTestCase,UndertowTwoWaySslNeedClientAuthTestCase
     - name: Run multi-repo-ci-tool 'copy-logs' command
       if: ${{ failure() }}
       run: |
-        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-core-build
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-build
     - if: ${{ failure() }}
       run: |
         mkdir -p .project-build-logs
