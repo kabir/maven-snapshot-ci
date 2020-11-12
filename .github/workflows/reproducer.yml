@@ -116,7 +116,9 @@ jobs:
         
       - name: Upload artifacts
         uses: actions/upload-artifact@v2.2.0
-        if: always()
+        # If you want to keep the logs when it all works as well as fails,
+        # change 'failure()' to 'always()'
+        if: failure()
         with:
           name: reproducer
           if-no-files-found: warn
