@@ -112,7 +112,7 @@ jobs:
 #         #
 #         # If the branch relies on some built dependencies, make sure to specify them
 #         # here with -Dversion property overrides!          
-#         run: mvn -B package ${MAVEN_TEST_PARAMS} -pl testsuite/integration/vdx 
+#         run: mvn -B package ${MAVEN_TEST_PARAMS}
         
       - name: Upload artifacts
         uses: actions/upload-artifact@v2.2.0
