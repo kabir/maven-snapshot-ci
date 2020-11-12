@@ -29,8 +29,8 @@ name: Test Failure Reproducer
 env:
   MAVEN_OPTS: -Xms756M -Xmx1g
 jobs:
-  wildfly-build:
-    name: wildfly-build
+  reproducer-build-and-test:
+    name: reproducer-build-and-test
     runs-on:
     - ubuntu-latest
     env:
