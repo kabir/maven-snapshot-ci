@@ -2,7 +2,7 @@
 #
 # 
 # To use it to reproduce a failure:
-#   * Make adjustments as indicated in the comments. These are
+#   * Make adjustments as indicated in the comments. These are:
 #     - (Optional) Set up checkout and build of dependencies, making sure that checkout's 'path' 
 #       and run's 'working-dir' match
 #     - Adjust the repository and ref of the 'Clone Main Component' step
