@@ -84,7 +84,7 @@ jobs:
         uses: actions/setup-java@v1
         with:
           # Set Java version here
-          java-version: '11'
+          java-version: '8'
 
       - name: Add '::1 localhost' to hosts file
         # (needed for IPv6 tests since GH runners don't have entry)
