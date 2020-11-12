@@ -1,9 +1,5 @@
 # Reproducer Template Workflow Yaml File
 #
-# It will get run every time you update this and push. To populate the Maven cache to
-# save time when rerunning (this only happens on a successful build) make sure to run
-# it first without enabling the 'Run Tests' step. This step is commented out in this 
-# template.
 # 
 # To use it to reproduce a failure:
 #   * Make adjustments as indicated in the comments. These are
@@ -15,12 +11,18 @@
 #       in the 'Build Main Component' step
 #     - Adjust and uncomment the 'Run Tests' step. If you needed some dependencies built, 
 #       specify those as -Dversion property overrides
+#   * copy it to the .github/workflows folder
+#
+# It will get run every time you update this and push. To populate the Maven cache to
+# save time when rerunning (this only happens on a successful build) make sure to run
+# it first without enabling the 'Run Tests' step. The step is commented out in this 
+# template to help you remember to do this.
 #
 # If you need SSH access, you can uncomment the 'Setup Tmate Session' to get access 
 # to a built server. It isn't perfect, but should work eventually. See 
 # https://github.com/mxschmitt/action-tmate for more details of how to use it.
 
-#copy it to the .github/workflows 
+
 name: Reproducer
 'on':
   push:
@@ -105,12 +107,12 @@ jobs:
 
       # This is left commented out initially to get the Maven cache populated.
       # Otherwise each re-run takes forever downloading thing
-      - name: Run Tests
-        # Choose the tests to run via -pl, -Dtest=... and so on
-        #
-        # If the branch relies on some built dependencies, make sure to specify them
-        # here with -Dversion property overrides!          
-        run: mvn -B package ${MAVEN_TEST_PARAMS} -pl testsuite/integration/vdx 
+#       - name: Run Tests
+#         # Choose the tests to run via -pl, -Dtest=... and so on
+#         #
+#         # If the branch relies on some built dependencies, make sure to specify them
+#         # here with -Dversion property overrides!          
+#         run: mvn -B package ${MAVEN_TEST_PARAMS} -pl testsuite/integration/vdx 
         
       - name: Upload artifacts
         uses: actions/upload-artifact@v2.2.0
