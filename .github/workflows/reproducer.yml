@@ -68,7 +68,7 @@ jobs:
           # Adjust for wildFly or WildFly Core as needed
           repository: kabir/wildfly
           # WildFly or WildFly Core branch here
-          ref: gh-action-fixes-2
+          ref: gh-action-fixes
 
       - name: Pull down Maven Cache
         # It is a good idea to do a run without tests first, as the cache only gets
