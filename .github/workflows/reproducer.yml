@@ -23,7 +23,7 @@
 # https://github.com/mxschmitt/action-tmate for more details of how to use it.
 
 
-name: Reproducer
+name: Test Failure Reproducer
 'on':
   push:
 env:
@@ -46,20 +46,20 @@ jobs:
       # !!!!! Dependencies - START !!!!!
       #
       # Do one of these blocks for each dependency that needs to be built
-      - uses: actions/checkout@v2
-        with:
-          # The repository to use
-          repository: xnio/xnio
-          # Branch,tag etc.
-          ref: 3.8
-          # Sub-folder to clone the repository into
-          # Must be what is used in working-directory in the next run step
-          path: .xnio
-      - name: Build dependency
-        # The working directory should match path of the previous checkout step
-        working-directory: .xnio
-        # Adjust build command as needed
-        run: mvn install -DskipTests
+#       - uses: actions/checkout@v2
+#         with:
+#           # The repository to use
+#           repository: org/repo
+#           # Branch,tag etc.
+#           ref: reference
+#           # Sub-folder to clone the repository into
+#           # Must be what is used in working-directory in the next run step
+#           path: .dependencyA
+#       - name: Build dependency
+#         # The working directory should match path of the previous checkout step
+#         working-directory: .dependencyA
+#         # Adjust build command as needed
+#         run: mvn install -DskipTests
       # !!!!! Dependencies - END !!!!!
       
       - name: Clone Main Component
@@ -106,9 +106,9 @@ jobs:
 #         uses: mxschmitt/action-tmate@v3
 
       # This is left commented out initially to get the Maven cache populated.
-      # Otherwise each re-run takes forever downloading thing
+      # Otherwise each re-run takes forever downloading from Maven.
 #       - name: Run Tests
-#         # Choose the tests to run via -pl, -Dtest=... and so on
+#         # Choose the tests to run via -pl, -Dtest=... and so on.
 #         #
 #         # If the branch relies on some built dependencies, make sure to specify them
 #         # here with -Dversion property overrides!          
