@@ -1,0 +1,17 @@
+{
+  "components": {
+    "wildfly": {
+      "org": "kabir",
+      "name": "wildfly",
+      "branch": "gh-action-fixes"
+    }
+  },
+  "name": "WildFly Only",
+  "env": {
+    "MAVEN_OPTS": "-Xms756M -Xmx1g"
+  },
+  "trigger": {
+    "user": "kabir",
+    "issue": "https://api.github.com/repos/kabir/maven-snapshot-ci/issues/8"
+  }
+}

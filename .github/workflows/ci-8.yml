@@ -1,0 +1,2067 @@
+name: WildFly Only
+'on':
+  push:
+    branches: multi-repo-ci-branch-8
+env:
+  MAVEN_OPTS: -Xms756M -Xmx1g
+  OB_ISSUE_ID: 8
+jobs:
+  cancel-previous-runs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+    - uses: n1hility/cancel-previous-runs@v2
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+  wildfly-build:
+    name: wildfly-build
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      MAVEN_BUILD_EXTRA_PARAMS: -DlegacyBuild -DlegacyRelease -DskipTests
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - cancel-previous-runs
+    outputs:
+      git-sha: ${{steps.git-rev-parse.outputs.git-sha}}
+      version_wildfly: ${{steps.grab-version.outputs.version_wildfly}}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Grab project version
+      id: grab-version
+      run: |
+        mvn -B help:evaluate -Dexpression=project.version -pl .
+        TMP="$(mvn -B help:evaluate -Dexpression=project.version -pl . | grep -v '^\[')"
+        echo "version: ${TMP}"
+        echo "Saving version to env var: \$version_wildfly"
+        echo "::set-output name=version_wildfly::${TMP}"
+        echo "OB_PROJECT_VERSION=${TMP}" >> $GITHUB_ENV
+        tmpfile=$(mktemp)
+        jq --arg version "${TMP}" '.components["wildfly"].version=$version' "${OB_ISSUE_DATA_JSON}" > "${tmpfile}"
+        mv "${tmpfile}" "${OB_ISSUE_DATA_JSON}"
+    - name: Parsing SHA-1 into output variable
+      id: git-rev-parse
+      run: |
+        TMP=$(git rev-parse HEAD)
+        echo "Saving version to env var: \$git-sha"
+        echo "::set-output name=git-sha::${TMP}"
+        tmpfile=$(mktemp)
+        jq --arg sha "${TMP}" '.components["wildfly"].sha=$sha' "${OB_ISSUE_DATA_JSON}" > "${tmpfile}"
+        mv "${tmpfile}" "${OB_ISSUE_DATA_JSON}"
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Ensure artifacts dir is there
+      run: |
+        mkdir -p ${OB_ARTIFACTS_DIR}
+        touch ${OB_STATUS_TEXT}
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B install ${MAVEN_TEST_PARAMS} ${MAVEN_BUILD_EXTRA_PARAMS} \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Run multi-repo-ci-tool 'backup-maven-artifacts' command
+      if: ${{ success() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar backup-maven-artifacts /home/runner/work/maven-snapshot-ci/maven-snapshot-ci/pom.xml /home/runner/.m2/repository /home/runner/work/maven-snapshot-ci/maven-snapshot-ci/.ci-tools/repo-backups/wildfly
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add -A
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Back up the maven artifacts created by wildfly" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-build
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-build.zip wildfly-build
+        rm -rf wildfly-build
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  wildfly-ts-smoke:
+    name: wildfly-ts-smoke
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B package ${MAVEN_TEST_PARAMS} \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-ts-smoke" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ts-smoke
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ts-smoke.zip wildfly-ts-smoke
+        rm -rf wildfly-ts-smoke
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  wildfly-ts-basic:
+    name: wildfly-ts-basic
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B ${MAVEN_TEST_BUILD_DEPS} \nmvn -B package ${MAVEN_IPV4_TEST_PARAMS}\
+        \ -Dts.basic -pl testsuite/integration/basic/ -Dtest=DiscoveryGroupExternalMessagingDeploymentTestCase\
+        \ \nmvn -B package ${MAVEN_TEST_PARAMS} -Dts.basic -pl testsuite/integration/basic/,testsuite/integration/ws/\
+        \ \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-ts-basic" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ts-basic
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ts-basic.zip wildfly-ts-basic
+        rm -rf wildfly-ts-basic
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  wildfly-ts-clustering-1:
+    name: wildfly-ts-clustering-1
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B ${MAVEN_TEST_BUILD_DEPS} \nmvn -B package ${MAVEN_TEST_PARAMS}\
+        \ -pl testsuite/integration/clustering/ -Dts.noSmoke -Dts.clustering -P \\\
+        !ts.clustering.cluster.fullha.profile,\\!ts.clustering.single.profile,\\!ts.clustering.byteman.profile\
+        \ -Dts.surefire.clustering.ha.additionalExcludes=affinity\\|cdi\\|dispatcher\\\
+        |ejb\\|ejb2\\|group\\|jms\\|jpa \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-ts-clustering-1" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ts-clustering-1
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ts-clustering-1.zip wildfly-ts-clustering-1
+        rm -rf wildfly-ts-clustering-1
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  wildfly-ts-clustering-2:
+    name: wildfly-ts-clustering-2
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B ${MAVEN_TEST_BUILD_DEPS} \nmvn -B package ${MAVEN_TEST_PARAMS}\
+        \ -pl testsuite/integration/clustering/ -Dts.noSmoke -Dts.clustering -Dts.surefire.clustering.ha.additionalExcludes=jsf\\\
+        |provider\\|registry\\|singleton\\|sso\\|web\\|xsite \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-ts-clustering-2" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ts-clustering-2
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ts-clustering-2.zip wildfly-ts-clustering-2
+        rm -rf wildfly-ts-clustering-2
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  wildfly-ts-domain:
+    name: wildfly-ts-domain
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B ${MAVEN_TEST_BUILD_DEPS} \nmvn -B package ${MAVEN_TEST_PARAMS}\
+        \ -Dts.domain -pl testsuite/domain \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-ts-domain" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ts-domain
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ts-domain.zip wildfly-ts-domain
+        rm -rf wildfly-ts-domain
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  wildfly-ts-elytron:
+    name: wildfly-ts-elytron
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B ${MAVEN_TEST_BUILD_DEPS} \nmvn -B package ${MAVEN_TEST_PARAMS}\
+        \ -Dinteg.module -Dts.elytron -pl testsuite/integration/elytron \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-ts-elytron" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ts-elytron
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ts-elytron.zip wildfly-ts-elytron
+        rm -rf wildfly-ts-elytron
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  wildfly-ts-iiop:
+    name: wildfly-ts-iiop
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B ${MAVEN_TEST_BUILD_DEPS} \nmvn -B package ${MAVEN_TEST_PARAMS}\
+        \ -Dts.iiop -pl testsuite/integration/iiop \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-ts-iiop" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ts-iiop
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ts-iiop.zip wildfly-ts-iiop
+        rm -rf wildfly-ts-iiop
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  wildfly-ts-legacy:
+    name: wildfly-ts-legacy
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B ${MAVEN_TEST_BUILD_DEPS} \nmvn -B package ${MAVEN_TEST_PARAMS}\
+        \ -Dts.legacy -pl testsuite/integration/legacy \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-ts-legacy" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ts-legacy
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ts-legacy.zip wildfly-ts-legacy
+        rm -rf wildfly-ts-legacy
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  wildfly-ts-legacy-ejb-client:
+    name: wildfly-ts-legacy-ejb-client
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B ${MAVEN_TEST_BUILD_DEPS} \nmvn -B package ${MAVEN_TEST_PARAMS}\
+        \ -Dts.legacy.ejb.client -pl testsuite/integration/legacy-ejb-client \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-ts-legacy-ejb-client" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ts-legacy-ejb-client
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ts-legacy-ejb-client.zip wildfly-ts-legacy-ejb-client
+        rm -rf wildfly-ts-legacy-ejb-client
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  wildfly-ts-manualmode:
+    name: wildfly-ts-manualmode
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B ${MAVEN_TEST_BUILD_DEPS} \nmvn -B package ${MAVEN_TEST_PARAMS}\
+        \ -Dts.manualmode -pl testsuite/integration/manualmode/ \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-ts-manualmode" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ts-manualmode
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ts-manualmode.zip wildfly-ts-manualmode
+        rm -rf wildfly-ts-manualmode
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  wildfly-ts-microprofile:
+    name: wildfly-ts-microprofile
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B ${MAVEN_TEST_BUILD_DEPS} \nmvn -B package ${MAVEN_TEST_PARAMS}\
+        \ -Dts.microprofile -rf testsuite/integration/microprofile \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-ts-microprofile" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ts-microprofile
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ts-microprofile.zip wildfly-ts-microprofile
+        rm -rf wildfly-ts-microprofile
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  wildfly-ts-multinode:
+    name: wildfly-ts-multinode
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B ${MAVEN_TEST_BUILD_DEPS} \nmvn -B package ${MAVEN_TEST_PARAMS}\
+        \ -Dts.multinode -rf testsuite/integration/multinode -DforkMode=always \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-ts-multinode" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ts-multinode
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ts-multinode.zip wildfly-ts-multinode
+        rm -rf wildfly-ts-multinode
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  wildfly-ts-rbac:
+    name: wildfly-ts-rbac
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B ${MAVEN_TEST_BUILD_DEPS} \nmvn -B package ${MAVEN_TEST_PARAMS}\
+        \ -Dts.rbac -pl testsuite/integration/rbac \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-ts-rbac" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ts-rbac
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ts-rbac.zip wildfly-ts-rbac
+        rm -rf wildfly-ts-rbac
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  wildfly-ts-rts:
+    name: wildfly-ts-rts
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B ${MAVEN_TEST_BUILD_DEPS} \nmvn -B package ${MAVEN_TEST_PARAMS}\
+        \ -Dts.rts -pl testsuite/integration/rts \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-ts-rts" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ts-rts
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ts-rts.zip wildfly-ts-rts
+        rm -rf wildfly-ts-rts
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  wildfly-ts-secman:
+    name: wildfly-ts-secman
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B ${MAVEN_TEST_BUILD_DEPS} \nmvn -B package ${MAVEN_TEST_PARAMS}\
+        \ -Dts.secman -pl testsuite/integration/secman \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-ts-secman" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ts-secman
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ts-secman.zip wildfly-ts-secman
+        rm -rf wildfly-ts-secman
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  wildfly-ts-vdx:
+    name: wildfly-ts-vdx
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B ${MAVEN_TEST_BUILD_DEPS} \nmvn -B package ${MAVEN_TEST_PARAMS}\
+        \ -DallTests -pl testsuite/integration/vdx -DtestLogToFile=false \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-ts-vdx" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ts-vdx
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ts-vdx.zip wildfly-ts-vdx
+        rm -rf wildfly-ts-vdx
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  wildfly-ts-xts:
+    name: wildfly-ts-xts
+    runs-on:
+    - ubuntu-latest
+    env:
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-build
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Maven Build
+      run: "mvn -B ${MAVEN_TEST_BUILD_DEPS} \nmvn -B package ${MAVEN_TEST_PARAMS}\
+        \ -Dts.xts -rf testsuite/integration/xts \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-ts-xts" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ts-xts
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ts-xts.zip wildfly-ts-xts
+        rm -rf wildfly-ts-xts
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  wildfly-ob-ci-end-job:
+    name: wildfly-ob-ci-end-job
+    runs-on:
+    - ubuntu-latest
+    if: ${{ always() }}
+    env:
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: .ci-tools/issue-data.json
+      MAVEN_TEST_BUILD_DEPS: install -pl ee-feature-pack/galleon-feature-pack,galleon-pack,build,dist,ee-dist,ee-build
+        -DskipTests
+      MAVEN_TEST_PARAMS: -DfailIfNoTests=false -Dipv6 -Djboss.test.transformers.eap
+        -Dci-cleanup=true -fae
+      OB_ARTIFACTS_DIR: .ci-tools/artifacts
+      OB_STATUS_TEXT: .ci-tools/artifacts/status-text.txt
+      OB_PROJECT_VERSION: ${{ needs.wildfly-build.outputs.version_wildfly }}
+      OB_MAVEN_DEPENDENCY_VERSIONS: ''
+    needs:
+    - wildfly-build
+    - wildfly-ts-smoke
+    - wildfly-ts-basic
+    - wildfly-ts-clustering-1
+    - wildfly-ts-clustering-2
+    - wildfly-ts-domain
+    - wildfly-ts-elytron
+    - wildfly-ts-iiop
+    - wildfly-ts-legacy
+    - wildfly-ts-legacy-ejb-client
+    - wildfly-ts-manualmode
+    - wildfly-ts-microprofile
+    - wildfly-ts-multinode
+    - wildfly-ts-rbac
+    - wildfly-ts-rts
+    - wildfly-ts-secman
+    - wildfly-ts-vdx
+    - wildfly-ts-xts
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        repository: kabir/wildfly
+        ref: gh-action-fixes
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - name: Run multi-repo-ci-tool 'overlay-backed-up-maven-artifacts' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar overlay-backed-up-maven-artifacts /home/runner/.m2/repository .ci-tools/repo-backups
+    - name: Add '::1 localhost' to hosts file
+      run: sudo bash -c 'echo ::1 localhost >> /etc/hosts'
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - uses: actions/checkout@v2
+      with:
+        repository: wildfly/wildfly-s2i
+        path: .maven-repo-generator
+    - run: |
+        # Important to remember ${OB_MAVEN_DEPENDENCY_VERSIONS} here!
+        mvn install -pl dist -Prelease ${OB_MAVEN_DEPENDENCY_VERSIONS}
+        cat dist/target/wildfly-galleon-pack-${OB_PROJECT_VERSION}-all-artifacts-list.txt
+        mv dist/target/wildfly-${OB_PROJECT_VERSION}.zip ${OB_ARTIFACTS_DIR}/wildfly.zip
+    - name: Back up maven repo zip
+      run: |
+        cd tools/maven-repo-generator
+        mvn install
+        java -jar target/maven-repo-generator-1.0.jar ../../../dist/target/wildfly-galleon-pack-${OB_PROJECT_VERSION}-all-artifacts-list.txt
+        mv maven-repo.zip ${OB_ARTIFACTS_DIR}/maven-repo.zip
+        ls -al ${OB_ARTIFACTS_DIR}
+      working-directory: .maven-repo-generator
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      working-directory: .ci-tools
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by wildfly-ob-ci-end-job" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+    - name: Run multi-repo-ci-tool 'copy-logs' command
+      if: ${{ failure() }}
+      run: |
+        java -jar .ci-tools/multi-repo-ci-tool.jar copy-logs . .project-build-logs/wildfly-ob-ci-end-job
+    - if: ${{ failure() }}
+      run: |
+        cd .project-build-logs
+        zip -r wildfly-ob-ci-end-job.zip wildfly-ob-ci-end-job
+        rm -rf wildfly-ob-ci-end-job
+    - uses: actions/upload-artifact@v2
+      if: ${{ failure() }}
+      with:
+        name: wildfly_only-logs-20201113-102736
+        path: .project-build-logs
+  ob-ci-end-job:
+    name: ob-ci-end-job
+    runs-on:
+    - end-job
+    needs:
+    - cancel-previous-runs
+    - wildfly-build
+    - wildfly-ts-smoke
+    - wildfly-ts-basic
+    - wildfly-ts-clustering-1
+    - wildfly-ts-clustering-2
+    - wildfly-ts-domain
+    - wildfly-ts-elytron
+    - wildfly-ts-iiop
+    - wildfly-ts-legacy
+    - wildfly-ts-legacy-ejb-client
+    - wildfly-ts-manualmode
+    - wildfly-ts-microprofile
+    - wildfly-ts-multinode
+    - wildfly-ts-rbac
+    - wildfly-ts-rts
+    - wildfly-ts-secman
+    - wildfly-ts-vdx
+    - wildfly-ts-xts
+    - wildfly-ob-ci-end-job
+    env:
+      MAVEN_OPTS: -Xmx1g -Xmx1g
+      OB_ARTIFACTS_DIR: artifacts
+      OB_STATUS_TEXT: artifacts/status-text.txt
+      OB_VERSION_WILDFLY: ${{ needs.wildfly-build.outputs.version_wildfly}}
+      OB_ISSUE_DATA_JSON: issue-data.json
+    if: ${{ always() }}
+    steps:
+    - name: Make OB_ARTIFACTS_DIR an absolute path
+      run: |
+        echo "OB_ARTIFACTS_DIR=${GITHUB_WORKSPACE}/${OB_ARTIFACTS_DIR}" >> $GITHUB_ENV
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+    - uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+    - name: Git command-line work
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - run: |
+        mkdir -p ${OB_ARTIFACTS_DIR}
+        touch ${OB_STATUS_TEXT}
+    - name: Run multi-repo-ci-tool 'merge-large-files-in-directory' command
+      run: |
+        java -jar multi-repo-ci-tool.jar merge-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Dump GitHub context
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+      run: echo "$GITHUB_CONTEXT"
+    - name: test
+      run: "ls -al ${OB_ARTIFACTS_DIR}\nIP_ADDR=$(hostname -I)\n# Remove spaces -\
+        \ note if the machine has more than one network interface they\n# will all\
+        \ be returned, and I am not handling that at the moment\nIP_ADDR=\"$(echo\
+        \ $IP_ADDR | sed -e 's/^[[:space:]]*//')\"\nTGT_FOLDER=/var/www/html/issue-${OB_ISSUE_ID}\n\
+        sudo rm -rf ${TGT_FOLDER}/*\nsudo mkdir -p ${TGT_FOLDER}\nif [ -f ${OB_ARTIFACTS_DIR}/wildfly.zip\
+        \ ]; then\n  sudo cp ${OB_ARTIFACTS_DIR}/wildfly.zip ${TGT_FOLDER}\nfi\nif\
+        \ [ -f ${OB_ARTIFACTS_DIR}/maven-repo.zip ]; then\n  sudo cp ${OB_ARTIFACTS_DIR}/maven-repo.zip\
+        \ ${TGT_FOLDER}\nfi\n# Link to the artifacts\nBASE_URL=http://${IP_ADDR}/issue-${OB_ISSUE_ID}\n\
+        echo Artifacts can be downloaded from: ${BASE_URL} >> $OB_STATUS_TEXT\n# Link\
+        \ to the workflow\necho The workflow run is at: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}\
+        \ >> $OB_STATUS_TEXT\n\n# Add the server zip and the maven repo zip to the\
+        \ json file\n# Copy the json file first so we don't modify the original from\
+        \ the branch, and then modify the downloadable copy\nFINAL_JSON=\"${TGT_FOLDER}/../issue-${OB_ISSUE_ID}.json\"\
+        \nsudo cp \"${OB_ISSUE_DATA_JSON}\" \"${FINAL_JSON}\"\n# server\ntmpfile=$(mktemp)\n\
+        sudo jq --arg path \"${BASE_URL}/wildfly.zip\" '.[\"downloads\"].server=$path'\
+        \ \"${FINAL_JSON}\" > \"${tmpfile}\"\nsudo mv \"${tmpfile}\" \"${FINAL_JSON}\"\
+        \n# maven repo\ntmpfile=$(mktemp)\nsudo jq --arg path \"${BASE_URL}/maven-repo.zip\"\
+        \ '.[\"downloads\"].\"maven-repo\"=$path' \"${FINAL_JSON}\" > \"${tmpfile}\"\
+        \nsudo mv \"${tmpfile}\" \"${FINAL_JSON}\"\n# Make permissions same as other\
+        \ files\nsudo chown root \"${FINAL_JSON}\"\nsudo chown root \"${FINAL_JSON}\"\
+        \nsudo chmod 644 \"${FINAL_JSON}\" \n"
+    - name: Run multi-repo-ci-tool 'split-large-files-in-directory' command
+      run: |
+        java -jar multi-repo-ci-tool.jar split-large-files-in-directory ${OB_ARTIFACTS_DIR}
+    - name: Git command-line work
+      if: ${{ success() }}
+      run: |
+        git config --local user.name "CI Action"
+        git config --local user.email "ci@example.com"
+        git add ${OB_ARTIFACTS_DIR}
+        branch_status=$(git status --porcelain)
+        [[ ! -z "${branch_status}}" ]] && git commit -m "Store any artifacts copied to \${OB_ARTIFACTS_DIR} by ob-ci-end-job" || echo "No changes"
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+        git push origin ${TMP}
+  ob-ci-read-status-output:
+    name: ob-ci-read-status-output
+    runs-on:
+    - ubuntu-latest
+    needs:
+    - cancel-previous-runs
+    - wildfly-build
+    - wildfly-ts-smoke
+    - wildfly-ts-basic
+    - wildfly-ts-clustering-1
+    - wildfly-ts-clustering-2
+    - wildfly-ts-domain
+    - wildfly-ts-elytron
+    - wildfly-ts-iiop
+    - wildfly-ts-legacy
+    - wildfly-ts-legacy-ejb-client
+    - wildfly-ts-manualmode
+    - wildfly-ts-microprofile
+    - wildfly-ts-multinode
+    - wildfly-ts-rbac
+    - wildfly-ts-rts
+    - wildfly-ts-secman
+    - wildfly-ts-vdx
+    - wildfly-ts-xts
+    - wildfly-ob-ci-end-job
+    - ob-ci-end-job
+    if: ${{ always() }}
+    env:
+      OB_STATUS_TEXT: artifacts/status-text.txt
+    outputs:
+      status-output: ${{steps.status-output.outputs.status-output}}
+    steps:
+    - name: Make OB_STATUS_TEXT an absolute path
+      run: |
+        echo "OB_STATUS_TEXT=${GITHUB_WORKSPACE}/${OB_STATUS_TEXT}" >> $GITHUB_ENV
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+    - name: Git command-line work
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git fetch origin ${TMP}
+        git rebase origin/${TMP}
+    - id: status-output
+      run: |
+        [[ -f "${OB_STATUS_TEXT}" ]] && TMP="$(cat ${OB_STATUS_TEXT})"
+        TMP="${TMP//'%'/'%25'}"
+        TMP="${TMP//$'\n'/'%0A'}"
+        TMP="${TMP//$'\r'/'%0D'}"
+        echo "::set-output name=status-output::${TMP}"
+  ob-ci-status-success:
+    name: Issue Status Report - Success
+    runs-on: ubuntu-latest
+    if: ${{ success() }}
+    needs:
+    - cancel-previous-runs
+    - wildfly-build
+    - wildfly-ts-smoke
+    - wildfly-ts-basic
+    - wildfly-ts-clustering-1
+    - wildfly-ts-clustering-2
+    - wildfly-ts-domain
+    - wildfly-ts-elytron
+    - wildfly-ts-iiop
+    - wildfly-ts-legacy
+    - wildfly-ts-legacy-ejb-client
+    - wildfly-ts-manualmode
+    - wildfly-ts-microprofile
+    - wildfly-ts-multinode
+    - wildfly-ts-rbac
+    - wildfly-ts-rts
+    - wildfly-ts-secman
+    - wildfly-ts-vdx
+    - wildfly-ts-xts
+    - wildfly-ob-ci-end-job
+    - ob-ci-end-job
+    - ob-ci-read-status-output
+    env:
+      wildfly_build_git_sha: ${{needs.wildfly-build.outputs.git-sha}}
+      status_output: ${{needs.ob-ci-read-status-output.outputs.status-output}}
+    steps:
+    - name: report-status
+      uses: actions/github-script@v3
+      with:
+        github-token: ${{secrets.OB_MULTI_CI_PAT}}
+        script: |-
+          await github.issues.addLabels({
+            issue_number: 8,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            labels: ['CI-Success']
+          })
+          const labelsOnIssueRet = await github.issues.listLabelsOnIssue({
+            issue_number: 8,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+          })
+          const labelsOnIssue = await github.paginate(labelsOnIssueRet)
+          const labelsToRemoveFromIssue = ['CI-Failure']
+          for (const labelToRemove of labelsToRemoveFromIssue) {
+            console.log('Want to remove label: ' + labelToRemove)
+            for (const label of labelsOnIssue) {
+              console.log('Match ' + label['name'] + '?')
+              if (label['name'] === labelToRemove) {
+                console.log('Removing label ' + label['name'])
+                await github.issues.removeLabel({
+                  issue_number: 8,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label['name']
+                })
+                break;
+              }
+            }
+          }
+          await github.issues.createComment({
+            issue_number: 8,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: 'The workflow passed!\n\n'
+            + 'These are the job names and their respective SHA-1 hashes:\n\n'
+            + 'wildfly-build: ' + process.env.wildfly_build_git_sha + '\n'
+            + '\n'
+            + process.env.status_output + '\n'
+          ,
+          })
+  ob-ci-status-failure:
+    name: Issue Status Report - Failure
+    runs-on: ubuntu-latest
+    if: ${{ failure() }}
+    needs:
+    - cancel-previous-runs
+    - wildfly-build
+    - wildfly-ts-smoke
+    - wildfly-ts-basic
+    - wildfly-ts-clustering-1
+    - wildfly-ts-clustering-2
+    - wildfly-ts-domain
+    - wildfly-ts-elytron
+    - wildfly-ts-iiop
+    - wildfly-ts-legacy
+    - wildfly-ts-legacy-ejb-client
+    - wildfly-ts-manualmode
+    - wildfly-ts-microprofile
+    - wildfly-ts-multinode
+    - wildfly-ts-rbac
+    - wildfly-ts-rts
+    - wildfly-ts-secman
+    - wildfly-ts-vdx
+    - wildfly-ts-xts
+    - wildfly-ob-ci-end-job
+    - ob-ci-end-job
+    - ob-ci-read-status-output
+    - ob-ci-status-success
+    env:
+      wildfly_build_git_sha: ${{needs.wildfly-build.outputs.git-sha}}
+      status_output: ${{needs.ob-ci-read-status-output.outputs.status-output}}
+    steps:
+    - name: report-status
+      uses: actions/github-script@v3
+      with:
+        github-token: ${{secrets.OB_MULTI_CI_PAT}}
+        script: |-
+          await github.issues.addLabels({
+            issue_number: 8,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            labels: ['CI-Failure']
+          })
+          const labelsOnIssueRet = await github.issues.listLabelsOnIssue({
+            issue_number: 8,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+          })
+          const labelsOnIssue = await github.paginate(labelsOnIssueRet)
+          const labelsToRemoveFromIssue = ['CI-Success']
+          for (const labelToRemove of labelsToRemoveFromIssue) {
+            console.log('Want to remove label: ' + labelToRemove)
+            for (const label of labelsOnIssue) {
+              console.log('Match ' + label['name'] + '?')
+              if (label['name'] === labelToRemove) {
+                console.log('Removing label ' + label['name'])
+                await github.issues.removeLabel({
+                  issue_number: 8,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label['name']
+                })
+                break;
+              }
+            }
+          }
+          await github.issues.createComment({
+            issue_number: 8,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: 'The workflow failed.\n\n'
+            + 'These are the job names and their respective SHA-1 hashes:\n\n'
+            + 'wildfly-build: ' + process.env.wildfly_build_git_sha + '\n'
+            + '\n'
+            + process.env.status_output + '\n'
+          ,
+          })
+  ob-ci-cleanup:
+    name: ob-ci-cleanup
+    runs-on: ubuntu-latest
+    needs:
+    - cancel-previous-runs
+    - wildfly-build
+    - wildfly-ts-smoke
+    - wildfly-ts-basic
+    - wildfly-ts-clustering-1
+    - wildfly-ts-clustering-2
+    - wildfly-ts-domain
+    - wildfly-ts-elytron
+    - wildfly-ts-iiop
+    - wildfly-ts-legacy
+    - wildfly-ts-legacy-ejb-client
+    - wildfly-ts-manualmode
+    - wildfly-ts-microprofile
+    - wildfly-ts-multinode
+    - wildfly-ts-rbac
+    - wildfly-ts-rts
+    - wildfly-ts-secman
+    - wildfly-ts-vdx
+    - wildfly-ts-xts
+    - wildfly-ob-ci-end-job
+    - ob-ci-end-job
+    - ob-ci-read-status-output
+    - ob-ci-status-success
+    - ob-ci-status-failure
+    if: ${{ always() }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: multi-repo-ci-branch-8
+        path: .ci-tools
+    - name: Git command-line work
+      working-directory: .ci-tools
+      run: |
+        TMP=$(git branch | sed -n -e 's/^\* \(.*\)/\1/p')
+        git push origin :${TMP}
