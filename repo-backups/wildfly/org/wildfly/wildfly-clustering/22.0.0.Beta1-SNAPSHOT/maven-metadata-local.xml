@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata modelVersion="1.1.0">
+  <groupId>org.wildfly</groupId>
+  <artifactId>wildfly-clustering</artifactId>
+  <version>22.0.0.Beta1-SNAPSHOT</version>
+  <versioning>
+    <snapshot>
+      <localCopy>true</localCopy>
+    </snapshot>
+    <lastUpdated>20201113102950</lastUpdated>
+    <snapshotVersions>
+      <snapshotVersion>
+        <extension>pom</extension>
+        <value>22.0.0.Beta1-SNAPSHOT</value>
+        <updated>20201113102950</updated>
+      </snapshotVersion>
+    </snapshotVersions>
+  </versioning>
+</metadata>

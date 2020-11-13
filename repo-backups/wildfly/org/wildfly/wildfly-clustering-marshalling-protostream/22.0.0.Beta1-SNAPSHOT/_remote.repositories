@@ -1,0 +1,6 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Fri Nov 13 10:30:23 UTC 2020
+wildfly-clustering-marshalling-protostream-22.0.0.Beta1-SNAPSHOT-sources.jar>=
+wildfly-clustering-marshalling-protostream-22.0.0.Beta1-SNAPSHOT.pom>=
+wildfly-clustering-marshalling-protostream-22.0.0.Beta1-SNAPSHOT.jar>=
+wildfly-clustering-marshalling-protostream-22.0.0.Beta1-SNAPSHOT-tests.jar>=

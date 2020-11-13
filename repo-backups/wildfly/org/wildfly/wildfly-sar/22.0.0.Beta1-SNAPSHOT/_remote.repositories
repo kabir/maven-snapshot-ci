@@ -1,0 +1,5 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Fri Nov 13 10:32:09 UTC 2020
+wildfly-sar-22.0.0.Beta1-SNAPSHOT-sources.jar>=
+wildfly-sar-22.0.0.Beta1-SNAPSHOT.pom>=
+wildfly-sar-22.0.0.Beta1-SNAPSHOT.jar>=

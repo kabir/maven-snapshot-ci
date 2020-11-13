@@ -3,7 +3,9 @@
     "wildfly": {
       "org": "kabir",
       "name": "wildfly",
-      "branch": "gh-action-fixes"
+      "branch": "gh-action-fixes",
+      "version": "22.0.0.Beta1-SNAPSHOT",
+      "sha": "8cee45ae5ca8963cb4e73bda0219caf6103af897"
     }
   },
   "name": "WildFly Only",

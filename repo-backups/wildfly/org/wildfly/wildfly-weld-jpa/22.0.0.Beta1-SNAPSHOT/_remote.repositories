@@ -1,0 +1,5 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Fri Nov 13 10:32:12 UTC 2020
+wildfly-weld-jpa-22.0.0.Beta1-SNAPSHOT.jar>=
+wildfly-weld-jpa-22.0.0.Beta1-SNAPSHOT.pom>=
+wildfly-weld-jpa-22.0.0.Beta1-SNAPSHOT-sources.jar>=
